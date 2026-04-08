@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - LifeDrop</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/main.css">
+
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!-- Leaflet Routing Machine CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav class="glass-card"
+        style="border-radius: 0; border-top: 0; border-left: 0; border-right: 0; position: sticky; top: 0; z-index: 100;">
+        <div class="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2C12 2 18 8 18 13.5C18 16.5376 15.3137 19 12 19C8.68629 19 6 16.5376 6 13.5C6 8 12 2 12 2Z"
+                    fill="#dc2626" stroke="none" />
+            </svg>
+            LifeDrop
+        </div>
+        <div class="nav-links" style="display: flex; align-items: center; gap: 1.5rem;">
+            <span id="userGreeting" style="font-weight: 500;">Hello, User</span>
+            <button class="btn btn-outline"
+                style="padding: 0.5rem 1rem; border-color: var(--primary-red); color: var(--primary-red); font-size: 0.85rem;"
+                onclick="openEditProfileForm()">Edit Profile</button>
+            <button class="btn btn-outline"
+                style="padding: 0.5rem 1rem; border-color: var(--text-muted); color: var(--text-muted);"
+                onclick="app.logout()">Logout</button>
+        </div>
+    </nav>
+
+    <!-- Dashboard Layout -->
+    <div class="dashboard-container">
+
+        <!-- Sidebar -->
+        <div class="sidebar glass-card">
+
+
+            <div class="nav-item active" id="nav-home" onclick="switchView('home')">
+                <span>👤</span> Profile
+            </div>
+            <div class="nav-item" id="nav-new-request" onclick="switchView('new-request')">
+                <span>➕</span> New Request
+            </div>
+            <div class="nav-item" id="nav-my-requests" onclick="switchView('my-requests')">
+                <span>📋</span> My Requests
+            </div>
+            <div class="nav-item" id="nav-available" onclick="switchView('available')">
+                <span>🩸</span> Available Requests
+            </div>
+            <div class="nav-item" id="nav-chats" onclick="switchView('chats')">
+                <span>💬</span> Active Chats <span id="chatBadge"
+                    style="background:var(--primary-red);color:white;border-radius:50%;padding:2px 6px;font-size:0.7rem;margin-left:auto;display:none;">!</span>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="dashboard-content">
+
+            <!-- Profile View (Home) -->
+            <div id="view-home" class="glass-card" style="padding: 2rem;">
+                <h2 style="margin-bottom: 2rem;">Your Profile</h2>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem;">
+                    <!-- Profile Card -->
+                    <div class="glass-card" style="padding: 1.5rem;">
+                        <h3 style="margin-bottom: 1rem; color: var(--primary-red);">Personal Info</h3>
+                        <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                            <div>
+                                <label style="color: var(--text-muted); font-size: 0.85rem;">Full Name</label>
+                                <p id="profileName" style="font-weight: 600; margin: 0.3rem 0 0 0;">-</p>
+                            </div>
+                            <div>
+                                <label style="color: var(--text-muted); font-size: 0.85rem;">Phone</label>
+                                <p id="profilePhone" style="font-weight: 600; margin: 0.3rem 0 0 0;">-</p>
+                            </div>
+                            <div>
+                                <label style="color: var(--text-muted); font-size: 0.85rem;">Age</label>
+                                <p id="profileAge" style="font-weight: 600; margin: 0.3rem 0 0 0;">-</p>
+                            </div>
+                            <div>
+                                <label style="color: var(--text-muted); font-size: 0.85rem;">Gender</label>
+                                <p id="profileGender" style="font-weight: 600; margin: 0.3rem 0 0 0;">-</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Blood/Location Card -->
+                    <div class="glass-card" style="padding: 1.5rem;">
+                        <h3 style="margin-bottom: 1rem; color: var(--primary-red);">Additional Info</h3>
+                        <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                            <div>
+                                <label style="color: var(--text-muted); font-size: 0.85rem;">Blood Type</label>
+                                <p id="profileBlood" style="font-weight: 600; margin: 0.3rem 0 0 0; font-size: 1.2rem;">-</p>
+                            </div>
+                            <div>
+                                <label style="color: var(--text-muted); font-size: 0.85rem;">Location</label>
+                                <p id="profileLocation" style="font-weight: 600; margin: 0.3rem 0 0 0; word-break: break-word;">-</p>
+                            </div>
+                            <div>
+                                <label style="color: var(--text-muted); font-size: 0.85rem;">Role</label>
+                                <p id="profileRole" style="font-weight: 600; margin: 0.3rem 0 0 0;">-</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Donor Info Card (if applicable) -->
+                    <div id="donorInfoCard" class="glass-card hidden" style="padding: 1.5rem;">
+                        <h3 style="margin-bottom: 1rem; color: var(--primary-red);">Donor Info</h3>
+                        <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                            <div>
+                                <label style="color: var(--text-muted); font-size: 0.85rem;">Last Donation Date</label>
+                                <p id="profileLastDonation" style="font-weight: 600; margin: 0.3rem 0 0 0;">-</p>
+                            </div>
+                            <div>
+                                <label style="color: var(--text-muted); font-size: 0.85rem;">Current Health Status</label>
+                                <p id="profileDiseases" style="font-weight: 600; margin: 0.3rem 0 0 0; word-break: break-word;">-</p>
+                            </div>
+                            <div>
+                                <label style="color: var(--text-muted); font-size: 0.85rem;">Availability</label>
+                                <p id="profileAvailability" style="font-weight: 600; margin: 0.3rem 0 0 0;">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Section -->
+                <div style="margin-top: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                    <div class="glass-card" style="padding: 1.5rem; text-align: center;">
+                        <h3 style="font-size: 2rem; color: var(--primary-red);" id="stat-1">0</h3>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;" id="stat-1-label">Active Requests</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New Request View (Seekers Only) -->
+            <div id="view-new-request" class="glass-card hidden" style="padding: 2rem;">
+                <h2 style="margin-bottom: 1.5rem;">Create Blood Request</h2>
+                <form id="createRequestForm">
+                    <div style="display: flex; gap: 1rem;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Blood Group Needed</label>
+                            <select class="form-control" id="reqBloodType" required>
+                                <option value="">Select</option>
+                                <option value="A+">A+</option>
+                                <option value="A-">A-</option>
+                                <option value="B+">B+</option>
+                                <option value="B-">B-</option>
+                                <option value="AB+">AB+</option>
+                                <option value="AB-">AB-</option>
+                                <option value="O+">O+</option>
+                                <option value="O-">O-</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Quantity (Units / Pints)</label>
+                            <input type="number" class="form-control" id="reqQuantity" placeholder="e.g. 2" min="1"
+                                required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Authorized Hospital / Blood Bank</label>
+                        <select class="form-control" id="reqHospitalId" required>
+                            <!-- populated by JS -->
+                            <option value="">Loading Hospitals...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Urgency Level</label>
+                        <select class="form-control" id="reqUrgency" required>
+                            <option value="Normal">Normal</option>
+                            <option value="High">High</option>
+                            <option value="Critical">Critical (Within 2 hrs)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Submit Request</button>
+                </form>
+            </div>
+
+            <!-- My Requests (Seekers) / Matches (Donors) List View -->
+            <div id="view-list" class="glass-card hidden" style="padding: 2rem;">
+                <h2 style="margin-bottom: 1.5rem;" id="listTitle">Requests</h2>
+                <div id="requestsListContainer">
+                    <p style="color: var(--text-muted);">No requests found.</p>
+                </div>
+            </div>
+
+            <!-- Chat / Communication View -->
+            <div id="view-chats" class="glass-card hidden" style="padding: 2rem;">
+                <h2 style="margin-bottom: 1.5rem;">Active Communications</h2>
+
+                <div style="display: flex; gap: 1.5rem; height: 500px;">
+                    <!-- Chat Sidebar -->
+                    <div style="width: 250px; border-right: 1px solid var(--glass-border); display: flex; flex-direction: column; overflow-y: auto;"
+                        id="chatListSidebar">
+                        <p style="color: var(--text-muted); padding: 1rem;">No active chats.</p>
+                    </div>
+
+                    <!-- Chat Window -->
+                    <div style="flex: 1; display: none; flex-direction: column; background: rgba(255,255,255,0.5); border-radius: 12px; overflow: hidden;"
+                        id="activeChatWindow">
+                        <div class="chat-header" style="z-index: 10;">
+                            <div>
+                                <h3 id="chatPartnerName">Partner Name</h3>
+                                <p style="font-size: 0.8rem; color: var(--text-muted);" id="chatPartnerDetails">Phone:
+                                    Hidden</p>
+                            </div>
+                            <span class="status-badge status-accepted" id="chatRequestStatus">Accepted</span>
+                        </div>
+
+                        <div style="display: flex; flex: 1; overflow: hidden; position: relative;" id="chatBodyWrapper">
+                            <!-- Map Container -->
+                            <div id="chatMapContainer" class="hidden"
+                                style="width: 40%; border-right: 1px solid var(--glass-border); position: relative;">
+                                <div id="seekerLocationMap" style="height: 100%; width: 100%; z-index: 1;"></div>
+                                <div style="position: absolute; top: 10px; right: 10px; z-index: 1000;">
+                                    <button type="button" class="btn btn-outline"
+                                        style="padding: 0.25rem 0.5rem; font-size: 0.75rem; background: white;"
+                                        onclick="app.toggleChatMap(false)">Hide Map</button>
+                                </div>
+                            </div>
+
+                            <!-- Messages Area -->
+                            <div class="chat-messages" id="chatMessagesArea" style="flex: 1;">
+                                <!-- Messages go here -->
+                            </div>
+                        </div>
+
+                        <form id="chatForm" class="chat-input">
+                            <input type="text" id="chatMessageInput" placeholder="Type a message..." required
+                                autocomplete="off">
+                            <button type="submit" class="btn btn-primary" style="padding: 0.75rem 1.5rem;">Send</button>
+                        </form>
+
+                        <div id="donorActions" class="hidden"
+                            style="padding: 0.5rem 1rem; border-top: 1px solid var(--glass-border); background: rgba(243, 244, 246, 0.8); text-align: right;">
+                            <button type="button" class="btn btn-primary"
+                                style="background:#16a34a; font-size: 0.85rem;"
+                                onclick="app.completeDonation(event)">Mark Donation Completed</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="editProfileModal" class="modal-overlay hidden" onclick="closeEditProfileForm(event)">
+        <main class="main-container" style="margin: auto; max-width: 600px; padding-top: 2rem;">
+            <div class="auth-box glass-card" onclick="event.stopPropagation()">
+                <button type="button" onclick="closeEditProfileForm(true)"
+                    style="position: absolute; right: 15px; top: 15px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+
+                <h3 style="margin-bottom: 1.5rem; text-align: center;">Edit Profile</h3>
+
+                <form id="editProfileForm">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" class="form-control" id="editName" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Blood Group <span style="color: var(--primary-red);">*</span></label>
+                        <select class="form-control" id="editBloodType" required>
+                            <option value="">Select Blood Group</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                        </select>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Age <span style="color: var(--primary-red);">*</span></label>
+                            <input type="number" class="form-control" id="editAge" placeholder="Enter your age" min="18" max="100" required>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Gender <span style="color: var(--primary-red);">*</span></label>
+                            <select class="form-control" id="editGender" required>
+                                <option value="">Select</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Last Donation Date</label>
+                        <input type="date" class="form-control" id="editLastDonationDate">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Current Health Status (Diseases / Conditions)</label>
+                        <textarea class="form-control" id="editDiseases" placeholder="e.g., None, Diabetes, High BP, etc." style="resize: vertical; min-height: 80px;"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Medical Report <span style="color: #999; font-size: 0.85rem;">(Optional)</span></label>
+                        <input type="file" class="form-control" id="editMedicalReport" accept="image/*,.pdf">
+                    </div>
+
+                    <div style="display: flex; gap: 1rem;">
+                        <button type="button" class="btn btn-outline" onclick="closeEditProfileForm(true)" style="flex: 1;">Cancel</button>
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast">Action successful!</div>
+
+    <!-- Leaflet Map & Routing JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
+    <!-- Realtime WebSockets -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <script src="js/app.js"></script>
+    <script>
+        // Inline UI Handlers for dashboard
+        function switchView(viewName) {
+            // Update nav active state
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            const clickedNav = document.getElementById('nav-' + viewName);
+            if (clickedNav) clickedNav.classList.add('active');
+
+            // Hide all views
+            document.getElementById('view-home').classList.add('hidden');
+            document.getElementById('view-new-request').classList.add('hidden');
+            document.getElementById('view-list').classList.add('hidden');
+            document.getElementById('view-chats').classList.add('hidden');
+
+            // Map nav id to view id and show
+            let targetView = `view-${viewName}`;
+            if (viewName === 'home') {
+                app.loadProfileView();
+            } else if (viewName === 'new-request') {
+                targetView = 'view-new-request';
+            } else if (viewName === 'my-requests') {
+                targetView = 'view-list';
+                document.getElementById('listTitle').innerText = 'My Blood Requests';
+                app.renderSeekerRequests();
+            } else if (viewName === 'available') {
+                targetView = 'view-list';
+                document.getElementById('listTitle').innerText = 'Available Blood Requests';
+                app.renderDonorMatches();
+            } else if (viewName === 'chats') {
+                app.renderChatList();
+            }
+
+            const el = document.getElementById(targetView);
+            if (el) el.classList.remove('hidden');
+        }
+
+        function openEditProfileForm() {
+            const user = app.getCurrentUser();
+            if (!user) return;
+
+            // Populate form with current user data
+            document.getElementById('editName').value = user.name || '';
+            document.getElementById('editBloodType').value = user.bloodType || '';
+            document.getElementById('editAge').value = user.age || '';
+            document.getElementById('editGender').value = user.gender || '';
+            document.getElementById('editLastDonationDate').value = user.lastDonationDate || '';
+            document.getElementById('editDiseases').value = user.diseases || '';
+
+            const modal = document.getElementById('editProfileModal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        }
+
+        function closeEditProfileForm(e) {
+            if (e === true || e.target.id === 'editProfileModal') {
+                document.getElementById('editProfileModal').classList.add('hidden');
+                document.getElementById('editProfileModal').style.display = 'none';
+                document.getElementById('editProfileForm').reset();
+            }
+        }
+
+
+
+        // Initialize dashboard
+        window.addEventListener('load', () => {
+            const user = app.getCurrentUser();
+            if (!user) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            document.getElementById('userGreeting').innerText = `Hello, ${user.name}`;
+
+            // Load hospitals for new request form
+            app.loadHospitals();
+
+            // Handle edit profile form submission
+            const editProfileForm = document.getElementById('editProfileForm');
+            if (editProfileForm) {
+                editProfileForm.addEventListener('submit', app.handleEditProfile);
+            }
+
+            app.updateDashboardStats();
+            app.loadProfileView();
+        });
+
+        // Load and display user profile
+        window.app.loadProfileView = function() {
+            const user = app.getCurrentUser();
+            if (!user) return;
+
+            // Populate personal info
+            document.getElementById('profileName').innerText = user.name || '-';
+            document.getElementById('profilePhone').innerText = user.phone || '-';
+            document.getElementById('profileAge').innerText = user.age || '-';
+            document.getElementById('profileGender').innerText = user.gender || '-';
+            document.getElementById('profileBlood').innerText = user.bloodType || '-';
+            
+            // Parse location to show just the city name
+            let locationDisplay = '-';
+            if (user.city) {
+                const locationParts = user.city.split('|');
+                locationDisplay = locationParts[0];
+            }
+            document.getElementById('profileLocation').innerText = locationDisplay;
+
+            // Show user role
+            document.getElementById('profileRole').innerText = user.role === 'donor' ? 'Donor' : 'Seeker';
+
+            // Always show health status
+            const donorCard = document.getElementById('donorInfoCard');
+            donorCard.classList.remove('hidden');
+            document.getElementById('profileLastDonation').innerText = user.lastDonationDate ? new Date(user.lastDonationDate).toLocaleDateString() : 'Not yet';
+            document.getElementById('profileDiseases').innerText = user.diseases || 'None';
+            document.getElementById('profileAvailability').innerText = user.availability || 'Yes';
+        };
+
+        // Handle profile update
+        window.app.handleEditProfile = async function(e) {
+            e.preventDefault();
+            const user = app.getCurrentUser();
+            if (!user) return;
+
+            const name = document.getElementById('editName').value;
+            const bloodType = document.getElementById('editBloodType').value;
+            const age = document.getElementById('editAge').value;
+            const gender = document.getElementById('editGender').value;
+            const lastDonationDate = document.getElementById('editLastDonationDate').value;
+            const diseases = document.getElementById('editDiseases').value || 'None';
+
+            try {
+                let medicalReportUrl = user.medicalReportUrl;
+
+                // Handle optional file upload
+                const fileInput = document.getElementById('editMedicalReport');
+                if (fileInput && fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    const reader = new FileReader();
+                    medicalReportUrl = await new Promise((resolve) => {
+                        reader.onloadend = () => {
+                            resolve(reader.result);
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                }
+
+                // Build update object - only include bloodType if it's not empty (preserves existing value)
+                const updateData = {
+                    name: name,
+                    age: age,
+                    gender: gender,
+                    lastDonationDate: lastDonationDate || null,
+                    diseases: diseases,
+                    availability: 'Yes',
+                    city: user.city  // Preserve city
+                };
+
+                // Only include bloodType if it's provided and not empty
+                if (bloodType && bloodType.trim() !== '') {
+                    updateData.bloodType = bloodType;
+                } else if (user.bloodType && user.bloodType !== 'N/A') {
+                    // If blank bloodType field, preserve the existing blood type
+                    updateData.bloodType = user.bloodType;
+                }
+
+                if (medicalReportUrl) {
+                    updateData.medicalReportUrl = medicalReportUrl;
+                }
+
+                // Update backend
+                const response = await fetch(`http://localhost:3000/api/users/${user.id}/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updateData)
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to update');
+
+                // Update localStorage with fresh data from server
+                if (data.user) {
+                    localStorage.setItem(DB_KEY_SESSION, JSON.stringify(data.user));
+                    app.showToast('Profile updated successfully!');
+                    closeEditProfileForm(true);
+                    document.getElementById('userGreeting').innerText = `Hello, ${data.user.name}`;
+                    app.loadProfileView();
+                } else {
+                    // Fallback if server doesn't return user data
+                    const updatedUser = { ...user, ...updateData };
+                    localStorage.setItem(DB_KEY_SESSION, JSON.stringify(updatedUser));
+                    app.showToast('Profile updated successfully!');
+                    closeEditProfileForm(true);
+                    document.getElementById('userGreeting').innerText = `Hello, ${updatedUser.name}`;
+                    app.loadProfileView();
+                }
+            } catch (err) {
+                app.showToast(err.message);
+            }
+        };
+    </script>
+</body>
+
+</html>

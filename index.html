@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LifeDrop - Blood Donation Management System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/main.css">
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav class="glass-card" style="border-radius: 0; border-top: 0; border-left: 0; border-right: 0;">
+        <div class="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2C12 2 18 8 18 13.5C18 16.5376 15.3137 19 12 19C8.68629 19 6 16.5376 6 13.5C6 8 12 2 12 2Z"
+                    fill="#dc2626" stroke="none" />
+            </svg>
+            LifeDrop
+        </div>
+        <div class="nav-links">
+            <button class="btn btn-outline" style="margin-right: 0.5rem;" onclick="openAuthModal('login')">Sign
+                In</button>
+            <button class="btn btn-primary" onclick="openAuthModal('register')">Sign Up</button>
+        </div>
+    </nav>
+
+    <!-- Main Wrapper for Hero + Auth -->
+    <!-- Hero Section -->
+    <main class="hero-section">
+        <div class="hero-content">
+            <h1 style="font-size: 3.5rem; color: var(--text-main); line-height: 1.2; margin-bottom: 1.5rem;">
+                Save a Life,<br>
+                <span class="gradient-text" style="font-size: 4.5rem; font-weight: 800;">Give
+                    Blood</span>
+            </h1>
+            <p style="font-size: 1.25rem; color: var(--text-muted); margin-bottom: 2rem; max-width: 600px;">
+                "A single drop of blood can make a huge difference."<br><br>
+                Connect instantly with nearby donors during emergencies. Our intelligent matching
+                system ensures that blood seekers find the right donors quickly, privately, and
+                securely. Join our mission today.
+            </p>
+            <div style="display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap;">
+            </div>
+        </div>
+
+        <div class="hero-image">
+            <!-- Colorful abstract/medical illustrations -->
+            <img src="https://images.unsplash.com/photo-1615461066841-6116e61058f4?auto=format&fit=crop&q=80&w=800"
+                alt="Blood Donation"
+                style="width: 100%; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); transform: rotate(2deg); transition: transform 0.3s ease;">
+        </div>
+    </main>
+
+    <!-- Information / Quotes Section -->
+    <section style="padding: 5rem 10%; background: white;">
+        <h2 style="text-align: center; margin-bottom: 3rem; font-size: 2.5rem; color: var(--text-main);">
+            Why Donate Blood?</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+            <div class="glass-card" style="text-align: center; padding: 2rem; background: #fff1f2; border: none;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">❤️</div>
+                <h3 style="margin-bottom: 1rem;">Save up to 3 lives</h3>
+                <p style="color: var(--text-muted);">Every donation can be separated into red cells,
+                    platelets, and plasma, potentially saving multiple patients.</p>
+            </div>
+            <div class="glass-card" style="text-align: center; padding: 2rem; background: #fef2f2; border: none;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">⚡</div>
+                <h3 style="margin-bottom: 1rem;">Quick & Safe</h3>
+                <p style="color: var(--text-muted);">The actual blood draw takes only 8-10 minutes.
+                    The process is completely safe with sterile, single-use equipment.</p>
+            </div>
+            <div class="glass-card" style="text-align: center; padding: 2rem; background: #fff1f2; border: none;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🏥</div>
+                <h3 style="margin-bottom: 1rem;">Constant Need</h3>
+                <p style="color: var(--text-muted);">Someone needs blood every two seconds. Your
+                    contribution ensures hospitals are always prepared.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modal Overlay Background -->
+    <div id="authModalOverlay" class="modal-overlay hidden" onclick="closeAuthModal(event)">
+        <!-- The Main Container from before, now styled as a popup modal -->
+        <main class="main-container" style="margin: auto; max-width: 500px; padding-top: 2rem;">
+            <div class="auth-box glass-card" onclick="event.stopPropagation()">
+                <!-- Close Button -->
+                <button type="button" onclick="closeAuthModal(true)"
+                    style="position: absolute; right: 15px; top: 15px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+
+                <div class="auth-tabs" style="display: none;">
+                    <div class="auth-tab active" id="tab-login" onclick="switchTab('login')">Sign In
+                    </div>
+                    <div class="auth-tab" id="tab-roleSelect" onclick="switchTab('roleSelect')">Sign Up
+                        (New User)</div>
+                </div>
+
+                <!-- Sign In Form -->
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" class="form-control" id="loginPhone" placeholder="Enter 10-digit number"
+                            pattern="[0-9]{10}" maxlength="10" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Send OTP</button>
+                </form>
+
+                <!-- Step 2: Role Selection Box (Hidden by default) -->
+                <!-- Role Selection -->
+                <div id="roleSelectionBox" class="hidden">
+                    <h3 style="margin-bottom: 1rem; text-align: center;">Join LifeDrop As</h3>
+                    <div style="display: flex; gap: 1rem; flex-direction: column;">
+                        <button class="btn btn-outline" style="padding: 1rem;" onclick="startRegistration('donor')">
+                            <span style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;">🩸</span>
+                            <strong>Donate Blood</strong><br>
+                            <span style="font-size: 0.85rem; color: var(--text-muted);">I want to save lives by
+                                donating blood</span>
+                        </button>
+                        <button class="btn btn-outline" style="padding: 1rem;" onclick="openSeekerForm()">
+                            <span style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;">🏥</span>
+                            <strong>Need Blood</strong><br>
+                            <span style="font-size: 0.85rem; color: var(--text-muted);">I need blood for an
+                                emergency or treatment</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Registration Form (Hidden by default) -->
+                <form id="registerForm" class="hidden">
+                    <h3 id="regRoleTitle" style="margin-bottom: 1.5rem; text-align: center;">Register</h3>
+                    <input type="hidden" id="regRole" value="donor">
+
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" class="form-control" id="regName" placeholder="Full Name" pattern="[A-Za-z\s]{2,50}" title="Only alphabets (A-Z, a-z) allowed" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" class="form-control" id="regPhone" placeholder="10-digit number" pattern="[0-9]{10}" maxlength="10" title="Enter exactly 10 digits" required>
+                    </div>
+
+                    <div id="donorDetails" style="display: none;">
+                        <div style="display: flex; gap: 1rem;">
+                            <div class="form-group" style="flex: 1;">
+                                <label>Age</label>
+                                <input type="number" class="form-control" id="regAge" min="18" max="65"
+                                    placeholder="Years">
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label>Gender</label>
+                                <select class="form-control" id="regGender">
+                                    <option value="">Select</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Current Diseases / Health Conditions</label>
+                            <input type="text" class="form-control" id="regDiseases"
+                                placeholder="E.g., Diabetes, None, etc.">
+                        </div>
+                        <div class="form-group">
+                            <label>Last Donation Date </label>
+                            <input type="date" class="form-control" id="regLastDonationDate">
+                        </div>
+                        <div class="form-group">
+                            <label>Upload Recent Medical Blood Report</label>
+                            <input type="file" class="form-control" id="regMedicalReport" accept="image/*,.pdf">
+                            <small style="color: var(--text-muted);">Helps verify your blood group
+                                and eligibility
+                                faster.</small>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Blood Group</label>
+                            <select class="form-control" id="regBloodType">
+                                <option value="">Select</option>
+                                <option value="A+">A+</option>
+                                <option value="A-">A-</option>
+                                <option value="B+">B+</option>
+                                <option value="B-">B-</option>
+                                <option value="O+">O+</option>
+                                <option value="O-">O-</option>
+                                <option value="AB+">AB+</option>
+                                <option value="AB-">AB-</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 2;">
+                            <label>City/Region</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="text" class="form-control" id="regCity"
+                                    placeholder="Type or Select from map ->" required>
+                                <button type="button" class="btn btn-outline" onclick="openLocationMap()"
+                                    title="Select location from map">📍 Map</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Sign Up &
+                        Send OTP</button>
+                </form>
+
+                <!-- OTP Verification Form (Hidden by default) -->
+                <form id="otpForm" class="hidden" style="text-align: center;">
+                    <h3 style="margin-bottom: 1rem;">Verify Phone Number</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 2rem; font-size: 0.9rem;">
+                        Please enter the 6-digit OTP sent to your phone.
+                    </p>
+                    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 2rem;">
+                        <input type="text" class="form-control otp-input" maxlength="1" onkeyup="moveToNext(this, 1)"
+                            autofocus required style="padding: 0.5rem; text-align: center;">
+                        <input type="text" class="form-control otp-input" maxlength="1" onkeyup="moveToNext(this, 2)"
+                            required style="padding: 0.5rem; text-align: center;">
+                        <input type="text" class="form-control otp-input" maxlength="1" onkeyup="moveToNext(this, 3)"
+                            required style="padding: 0.5rem; text-align: center;">
+                        <input type="text" class="form-control otp-input" maxlength="1" onkeyup="moveToNext(this, 4)"
+                            required style="padding: 0.5rem; text-align: center;">
+                        <input type="text" class="form-control otp-input" maxlength="1" onkeyup="moveToNext(this, 5)"
+                            required style="padding: 0.5rem; text-align: center;">
+                        <input type="text" class="form-control otp-input" maxlength="1" required
+                            style="padding: 0.5rem; text-align: center;">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Verify &
+                        Proceed</button>
+                    <button type="button" class="btn btn-outline"
+                        style="width: 100%; margin-top: 1rem; border: none; color: var(--text-muted);"
+                        onclick="location.reload()">Cancel</button>
+                </form>
+
+                <!-- Blood Seeker Request Form (Hidden by default) -->
+                <form id="seekerForm" class="hidden">
+                    <h3 style="margin-bottom: 1.5rem; text-align: center;">Request Blood</h3>
+                    
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" class="form-control" id="seekerName" placeholder="Full Name" pattern="[A-Za-z\s]{2,50}" title="Only alphabets (A-Z, a-z) allowed" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" class="form-control" id="seekerPhone" placeholder="10-digit number" pattern="[0-9]{10}" maxlength="10" title="Enter exactly 10 digits" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Location</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="text" class="form-control" id="seekerLocation"
+                                placeholder="Type or Select from map ->" required>
+                            <button type="button" class="btn btn-outline" onclick="openLocationMap()"
+                                title="Select location from map">📍 Map</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Blood Group</label>
+                        <select class="form-control" id="seekerBloodGroup" required>
+                            <option value="">Select Blood Group</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Number of Units Needed</label>
+                        <input type="number" class="form-control" id="seekerUnits" min="1" placeholder="Enter number of units" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Request</button>
+                    <button type="button" class="btn btn-outline"
+                        style="width: 100%; margin-top: 0.5rem; border: none; color: var(--text-muted);"
+                        onclick="closeSeekerForm()">Cancel</button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <!-- Map Selection Modal -->
+    <div id="mapModalOverlay" class="modal-overlay hidden" onclick="closeLocationMap(event)">
+        <main class="main-container" style="margin: auto; max-width: 600px; padding-top: 2rem;">
+            <div class="auth-box glass-card" onclick="event.stopPropagation()">
+                <button type="button" onclick="closeLocationMap(true)"
+                    style="position: absolute; right: 15px; top: 15px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); z-index: 1000;">&times;</button>
+                <h3 style="margin-bottom: 1rem; text-align: center;">Select Your Location</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem; text-align: center;">Click anywhere on the map to set your location.</p>
+
+                <div id="registrationMap" style="width: 100%; height: 300px; border-radius: 8px; margin-bottom: 1rem;">
+                </div>
+
+                <div style="text-align: center;">
+                    <button type="button" class="btn btn-primary" onclick="confirmMapLocation()"
+                        style="width: 100%;">Confirm Location</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">Action successful!</div>
+
+    <!-- Supabase Client -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> -->
+    <script src="js/app.js"></script>
+    <script>
+        // Check if user is already logged in
+        if (localStorage.getItem('bt_currentUser')) {
+            window.location.href = 'dashboard.html';
+        }
+
+        function toggleDonorFields() {
+            const role = document.getElementById('regRole').value;
+            const donorDetails = document.getElementById('donorDetails');
+            const bgSelect = document.getElementById('regBloodType');
+            const ageInput = document.getElementById('regAge');
+
+            if (role === 'donor') {
+                donorDetails.style.display = 'block';
+                bgSelect.required = true;
+                ageInput.required = true;
+
+                // Set max date to today for last donation date
+                document.getElementById('regLastDonationDate').max = new Date().toISOString().split("T")[0];
+            } else {
+                donorDetails.style.display = 'none';
+                bgSelect.required = false;
+                ageInput.required = false;
+            }
+        }
+
+
+
+        // Landing Page UI Logic
+        function openAuthModal(overrideTab = '') {
+            const modal = document.getElementById('authModalOverlay');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+
+            if (overrideTab === 'login') {
+                switchTab('login');
+            } else if (overrideTab === 'register') {
+                switchTab('roleSelect');
+            } else if (overrideTab && overrideTab !== 'login' && overrideTab !== 'register') {
+                // Legacy support if role was passed directly
+                startRegistration(overrideTab);
+            }
+        }
+
+        function closeAuthModal(e) {
+            if (e === true || e.target.id === 'authModalOverlay') {
+                document.getElementById('authModalOverlay').classList.add('hidden');
+                document.getElementById('authModalOverlay').style.display = 'none';
+                // Reset all forms
+                document.getElementById('loginForm').classList.add('hidden');
+                document.getElementById('roleSelectionBox').classList.add('hidden');
+                document.getElementById('registerForm').classList.add('hidden');
+                document.getElementById('otpForm').classList.add('hidden');
+                document.getElementById('seekerForm').classList.add('hidden');
+                document.getElementById('seekerForm').reset();
+                document.getElementById('registerForm').reset();
+                document.querySelectorAll('.otp-input').forEach(input => input.value = '');
+            }
+        }
+
+        function switchTab(tab) {
+            document.getElementById('tab-login').classList.remove('active');
+            if (document.getElementById('tab-roleSelect')) document.getElementById('tab-roleSelect').classList.remove('active');
+            if (document.getElementById('tab-registerForm')) document.getElementById('tab-registerForm').classList.remove('active');
+
+            if (document.getElementById('tab-' + tab)) {
+                document.getElementById('tab-' + tab).classList.add('active');
+            }
+
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('roleSelectionBox').classList.add('hidden');
+            document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('otpForm').classList.add('hidden');
+
+            if (tab === 'login') {
+                if (document.getElementById('tab-login')) document.getElementById('tab-login').classList.add('active');
+                document.getElementById('loginForm').classList.remove('hidden');
+            } else if (tab === 'roleSelect') {
+                if (document.getElementById('tab-roleSelect')) document.getElementById('tab-roleSelect').classList.add('active');
+                document.getElementById('roleSelectionBox').classList.remove('hidden');
+            } else if (tab === 'registerForm') {
+                if (document.getElementById('tab-roleSelect')) document.getElementById('tab-roleSelect').classList.add('active');
+                document.getElementById('registerForm').classList.remove('hidden');
+            }
+        }
+
+        function startRegistration(role) {
+            document.getElementById('regRole').value = role;
+            document.getElementById('regRoleTitle').innerText = role === 'donor' ? 'Register As A Donor' : 'Register As A Seeker';
+            toggleDonorFields();
+            switchTab('registerForm');
+        }
+
+        function moveToNext(el, event) {
+            if (el.value.length > 0 && el.nextElementSibling) {
+                el.nextElementSibling.focus();
+            }
+            if (event.key === 'Backspace' && el.previousElementSibling) {
+                el.previousElementSibling.focus();
+            }
+        }
+
+        // Seeker Form Functions
+        function openSeekerForm() {
+            const modal = document.getElementById('authModalOverlay');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+
+            // Hide all other forms and show seeker form
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('roleSelectionBox').classList.add('hidden');
+            document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('otpForm').classList.add('hidden');
+            document.getElementById('seekerForm').classList.remove('hidden');
+            document.querySelectorAll('.otp-input').forEach(input => input.value = '');
+        }
+
+        function closeSeekerForm() {
+            const modal = document.getElementById('authModalOverlay');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            document.getElementById('seekerForm').classList.add('hidden');
+            document.getElementById('otpForm').classList.add('hidden');
+            document.getElementById('seekerForm').reset();
+            document.querySelectorAll('.otp-input').forEach(input => input.value = '');
+        }
+
+        // Store seeker data temporarily for OTP verification
+        let tempSeekerData = null;
+
+        // Handle Seeker Form Submission
+        document.addEventListener('DOMContentLoaded', function () {
+            const seekerForm = document.getElementById('seekerForm');
+            if (seekerForm) {
+                seekerForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    
+                    const name = document.getElementById('seekerName').value;
+                    const phone = document.getElementById('seekerPhone').value;
+                    const location = document.getElementById('seekerLocation').value;
+                    const bloodGroup = document.getElementById('seekerBloodGroup').value;
+                    const units = document.getElementById('seekerUnits').value;
+
+                    try {
+                        app.showToast('Sending OTP to your phone...');
+                        
+                        // Store data for later use after OTP verification
+                        tempSeekerData = {
+                            name: name,
+                            phone: phone,
+                            location: location,
+                            bloodGroup: bloodGroup,
+                            units: units
+                        };
+
+                        // Request OTP
+                        const otpResponse = await fetch('http://localhost:3000/api/send-sms-otp', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ phone: phone })
+                        });
+
+                        const otpData = await otpResponse.json();
+
+                        if (!otpResponse.ok) {
+                            throw new Error(otpData.error || 'Failed to send OTP');
+                        }
+
+                        // Show demo OTP if in offline mode
+                        if (otpData.demoOtp) {
+                            app.showToast(`Demo OTP: ${otpData.demoOtp}`);
+                        }
+
+                        // Hide seeker form and show OTP form
+                        document.getElementById('seekerForm').classList.add('hidden');
+                        document.getElementById('otpForm').classList.remove('hidden');
+                        
+                        // Clear OTP inputs
+                        document.querySelectorAll('.otp-input').forEach(input => input.value = '');
+                        document.querySelectorAll('.otp-input')[0].focus();
+
+                    } catch (err) {
+                        console.error('Error sending OTP:', err);
+                        app.showToast('Error: ' + err.message);
+                    }
+                });
+            }
+
+            // Handle OTP Form Submission for Seeker
+            const otpForm = document.getElementById('otpForm');
+            if (otpForm) {
+                otpForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    
+                    try {
+                        // Collect OTP from inputs
+                        const otpInputs = document.querySelectorAll('.otp-input');
+                        const otp = Array.from(otpInputs).map(input => input.value).join('');
+                        
+                        if (otp.length !== 6) {
+                            app.showToast('Please enter a 6-digit OTP');
+                            return;
+                        }
+
+                        app.showToast('Verifying OTP...');
+
+                        // Verify OTP
+                        const verifyResponse = await fetch('http://localhost:3000/api/verify-sms-otp', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                phone: tempSeekerData.phone, 
+                                otp: otp 
+                            })
+                        });
+
+                        const verifyData = await verifyResponse.json();
+
+                        if (!verifyResponse.ok) {
+                            throw new Error(verifyData.error || 'OTP verification failed');
+                        }
+
+                        // OTP verified successfully, now register and create request
+                        app.showToast('Processing your blood request...');
+
+                        // Create a unique user ID
+                        const userId = '_' + Math.random().toString(36).substr(2, 9);
+                        
+                        // Register user as a seeker in the backend
+                        const userData = {
+                            id: userId,
+                            name: tempSeekerData.name,
+                            phone: tempSeekerData.phone,
+                            role: 'seeker',
+                            bloodType: 'N/A',
+                            city: tempSeekerData.location,
+                            age: '',
+                            gender: '',
+                            diseases: '',
+                            lastDonationDate: '',
+                            availability: '',
+                            medicalReportUrl: ''
+                        };
+
+                        const registerResponse = await fetch('http://localhost:3000/api/register', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(userData)
+                        });
+
+                        const registerData = await registerResponse.json();
+
+                        if (!registerResponse.ok) {
+                            throw new Error(registerData.error || 'Registration failed');
+                        }
+
+                        // Create blood request
+                        const requestData = {
+                            id: '_' + Math.random().toString(36).substr(2, 9),
+                            seekerId: userId,
+                            bloodType: tempSeekerData.bloodGroup,
+                            quantity: parseInt(tempSeekerData.units),
+                            location: tempSeekerData.location,
+                            urgency: 'High'
+                        };
+
+                        const requestResponse = await fetch('http://localhost:3000/api/requests', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(requestData)
+                        });
+
+                        const requestDataResponse = await requestResponse.json();
+
+                        if (!requestResponse.ok) {
+                            throw new Error(requestDataResponse.error || 'Failed to create request');
+                        }
+
+                        // Save user to localStorage
+                        localStorage.setItem('bt_currentUser', JSON.stringify(userData));
+                        
+                        app.showToast('Blood request submitted successfully! Redirecting...');
+                        
+                        // Reset forms
+                        document.getElementById('otpForm').classList.add('hidden');
+                        document.getElementById('seekerForm').classList.remove('hidden');
+                        document.getElementById('seekerForm').reset();
+                        
+                        // Redirect to dashboard
+                        setTimeout(() => {
+                            window.location.replace('dashboard.html');
+                        }, 1500);
+
+                    } catch (err) {
+                        console.error('OTP Verification Error:', err);
+                        app.showToast('Error: ' + err.message);
+                    }
+                });
+            }
+        });
+
+
+        // Auto-redirect if already logged in
+        window.addEventListener('load', () => {
+            const currentUser = localStorage.getItem('bt_currentUser');
+            if (currentUser) {
+                window.location.href = 'dashboard.html';
+            }
+        });
+
+        // ==== Simple Map Registration Logic ====
+        let regMap = null;
+        let regMarker = null;
+        let selectedLat = null;
+        let selectedLng = null;
+
+        function openLocationMap() {
+            const modal = document.getElementById('mapModalOverlay');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+
+            if (!regMap) {
+                setTimeout(() => {
+                    const defaultLat = 20.5937;
+                    const defaultLng = 78.9629;
+                    regMap = L.map('registrationMap').setView([defaultLat, defaultLng], 5);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }).addTo(regMap);
+
+                    // Initialize marker at center
+                    selectedLat = defaultLat;
+                    selectedLng = defaultLng;
+                    regMarker = L.marker([selectedLat, selectedLng], { draggable: true }).addTo(regMap);
+
+                    // Update marker on drag
+                    regMarker.on('dragend', function (e) {
+                        selectedLat = e.target.getLatLng().lat;
+                        selectedLng = e.target.getLatLng().lng;
+                    });
+
+                    // Update marker on map click
+                    regMap.on('click', function (e) {
+                        selectedLat = e.latlng.lat;
+                        selectedLng = e.latlng.lng;
+                        regMarker.setLatLng([selectedLat, selectedLng]);
+                    });
+
+                    // Try to get actual location
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(pos => {
+                            selectedLat = pos.coords.latitude;
+                            selectedLng = pos.coords.longitude;
+                            regMap.setView([selectedLat, selectedLng], 13);
+                            regMarker.setLatLng([selectedLat, selectedLng]);
+                        });
+                    }
+                }, 100);
+            } else {
+                setTimeout(() => {
+                    regMap.invalidateSize();
+                }, 100);
+            }
+        }
+
+        function closeLocationMap(e) {
+            if (e === true || e.target.id === 'mapModalOverlay') {
+                document.getElementById('mapModalOverlay').classList.add('hidden');
+                document.getElementById('mapModalOverlay').style.display = 'none';
+            }
+        }
+
+        async function confirmMapLocation() {
+            if (!selectedLat || !selectedLng) {
+                app.showToast('Please click on the map to select a location first.');
+                return;
+            }
+
+            app.showToast('Fetching address...');
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${selectedLat}&lon=${selectedLng}`);
+                const data = await res.json();
+
+                let locationName = '';
+                if (data && data.address) {
+                    locationName = data.address.city || data.address.town || data.address.state_district || data.address.state || "Location";
+                } else {
+                    locationName = `${selectedLat.toFixed(4)}, ${selectedLng.toFixed(4)}`;
+                }
+
+                const locationValue = `${locationName}|${selectedLat},${selectedLng}`;
+                
+                // Check which form is visible and update accordingly
+                const regCityField = document.getElementById('regCity');
+                const seekerLocationField = document.getElementById('seekerLocation');
+                
+                if (regCityField && regCityField.offsetParent !== null) {
+                    regCityField.value = locationValue;
+                } else if (seekerLocationField && seekerLocationField.offsetParent !== null) {
+                    seekerLocationField.value = locationValue;
+                }
+                
+                closeLocationMap(true);
+            } catch (err) {
+                const regCityField = document.getElementById('regCity');
+                const seekerLocationField = document.getElementById('seekerLocation');
+                const locationValue = `${selectedLat.toFixed(4)}, ${selectedLng.toFixed(4)}`;
+                
+                if (regCityField && regCityField.offsetParent !== null) {
+                    regCityField.value = locationValue;
+                } else if (seekerLocationField && seekerLocationField.offsetParent !== null) {
+                    seekerLocationField.value = locationValue;
+                }
+                
+                closeLocationMap(true);
+            }
+        }
+    </script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</body>
+
+</html>
