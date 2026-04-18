@@ -5,7 +5,7 @@
 
 // Replace these with your actual Supabase URL and Anon Key
 // const SUPABASE_URL = 'https://xrhtolzapmrcskwajgtu.supabase.co';
-// const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhyaHRvbHphcG1yY3Nrd2FqZ3R1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3NTAyMjksImV4cCI6MjA4NzMyNjIyOX0.kVVMqTLEPRnKTGGq2mWwBwKJlG0syLYNumTgcIjWJXE';
+// const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
 
 // let supabase = null; // Removed Supabase instantiation, using Node.js Local backend
 
@@ -84,10 +84,15 @@ window.app = {
                     if (el.tags['addr:street']) address.push(el.tags['addr:street']);
                     if (el.tags['addr:city']) address.push(el.tags['addr:city']);
 
+                    const elLat = el.center ? el.center.lat : el.lat;
+                    const elLon = el.center ? el.center.lon : el.lon;
+
                     return {
                         name: el.tags.name,
                         type: el.tags.amenity || el.tags.healthcare || 'Medical Facility',
-                        address: address.length > 0 ? address.join(', ') : 'Nearby location'
+                        address: address.length > 0 ? address.join(', ') : 'Nearby location',
+                        lat: elLat,
+                        lon: elLon
                     };
                 });
 
@@ -124,7 +129,8 @@ window.app = {
             `;
             div.onclick = () => {
                 const addressStr = loc.address !== 'Nearby location' ? `, ${loc.address}` : '';
-                document.getElementById('reqLocation').value = `${loc.name}${addressStr}`;
+                const coordStr = (loc.lat && loc.lon) ? `|${loc.lat},${loc.lon}` : '';
+                document.getElementById('reqLocation').value = `${loc.name}${addressStr}${coordStr}`;
                 list.classList.add('hidden');
             };
             list.appendChild(div);
@@ -133,34 +139,26 @@ window.app = {
         list.classList.remove('hidden');
     },
 
-    // ==== Authentication ====
-    sendOTP: async (phone) => {
-        // Calling local SMS router for OTP
-        const res = await fetch('http://localhost:3000/api/send-sms-otp', {
+    // ==== Authentication (Email OTP via SMTP) ====
+    sendOTP: async (email) => {
+        const res = await fetch('http://localhost:3000/api/send-email-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone })
+            body: JSON.stringify({ email })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to generate OTP');
-
-        // Expose demo OTP to UI (if Twilio isn't fully set up in server.js)
-        if (data.demoOtp) {
-            app.showToast('Demo OTP for ' + phone + ' is: ' + data.demoOtp, 6000);
-            alert('Demo OTP for ' + phone + ' is: ' + data.demoOtp);
-        }
+        if (!res.ok) throw new Error(data.error || 'Failed to send OTP email.');
         return true;
     },
 
-    verifyOTP: async (phone, otpStr) => {
-        const res = await fetch('http://localhost:3000/api/verify-sms-otp', {
+    verifyOTP: async (email, otpStr) => {
+        const res = await fetch('http://localhost:3000/api/verify-email-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone, otp: otpStr })
+            body: JSON.stringify({ email, otp: otpStr })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Invalid OTP code.');
-
+        if (!res.ok) throw new Error(data.error || 'Invalid OTP. Please check your email.');
         return true;
     },
 
@@ -184,7 +182,6 @@ window.app = {
 
             // Construct registration data early and save to memory
             app.tempRegData = {
-                id: '_' + Math.random().toString(36).substr(2, 9),
                 name: document.getElementById('regName').value,
                 phone: phone,
                 role: document.getElementById('regRole') ? document.getElementById('regRole').value : 'donor',
@@ -215,42 +212,57 @@ window.app = {
         }
 
         if (formId === 'loginForm') {
-            const phone = document.getElementById('loginPhone').value;
-            const role = document.getElementById('loginRole') ? document.getElementById('loginRole').value : null;
+            const email = document.getElementById('loginEmail')
+                ? document.getElementById('loginEmail').value.trim()
+                : '';
 
             try {
-                // Remove all non-digit characters for validation
-                const cleanPhone = phone.replace(/\D/g, '');
-                
-                if (cleanPhone.length !== 10) {
-                    throw new Error('Please enter a valid 10-digit phone number');
+                if (!email || !email.includes('@')) {
+                    throw new Error('Please enter a valid email address.');
                 }
 
-                // Fetch user from local node backend
-                const response = await fetch(`http://localhost:3000/api/users/${phone}`);
+                app.showToast('Looking up your account...');
+
+                // Fetch user by email from backend
+                const response = await fetch(
+                    `http://localhost:3000/api/users/email/${encodeURIComponent(email)}`
+                );
                 const data = await response.json();
 
-                if (!response.ok) throw new Error(data.error || 'User not found. Please register.');
+                if (!response.ok) throw new Error(data.error || 'Account not found. Please register.');
                 const user = data;
 
-                await app.sendOTP(phone);
+                app.showToast('Sending OTP to your email...');
+                await app.sendOTP(email);
+
+                // Show email in OTP subtitle if element exists
+                const otpDisplay = document.getElementById('otpEmailDisplay');
+                if (otpDisplay) otpDisplay.textContent = email;
 
                 app.tempLoginUser = user;
                 document.getElementById('loginForm').classList.add('hidden');
                 document.getElementById('otpForm').classList.remove('hidden');
+                document.querySelectorAll('.otp-input').forEach(i => i.value = '');
+                const first = document.querySelector('.otp-input');
+                if (first) first.focus();
             } catch (err) {
                 app.showToast(err.message);
             }
         }
     },
 
-    processRegistration: async (phone) => {
-
+    processRegistration: async (email) => {
         try {
-            await app.sendOTP(phone);
-
+            // email param is the actual email address for OTP
+            const targetEmail = app.tempRegData && app.tempRegData.email ? app.tempRegData.email : email;
+            await app.sendOTP(targetEmail);
+            const otpDisplay = document.getElementById('otpEmailDisplay');
+            if (otpDisplay) otpDisplay.textContent = targetEmail;
             document.getElementById('registerForm').classList.add('hidden');
             document.getElementById('otpForm').classList.remove('hidden');
+            document.querySelectorAll('.otp-input').forEach(i => i.value = '');
+            const first = document.querySelector('.otp-input');
+            if (first) first.focus();
         } catch (err) {
             app.showToast('Failed to send OTP: ' + err.message);
         }
@@ -261,18 +273,21 @@ window.app = {
         const inputs = document.querySelectorAll('.otp-input');
         const otpStr = Array.from(inputs).map(i => i.value).join('');
 
-        let phoneToVerify = null;
-        if (app.tempRegData) phoneToVerify = app.tempRegData.phone;
-        else if (app.tempLoginUser) phoneToVerify = app.tempLoginUser.phone;
+        // Determine email to verify against
+        let emailToVerify = null;
+        if (app.tempRegData)   emailToVerify = app.tempRegData.email;
+        else if (app.tempLoginUser) emailToVerify = app.tempLoginUser.email;
 
-        if (!phoneToVerify) return;
+        if (!emailToVerify) {
+            app.showToast('Session lost. Please refresh and try again.');
+            return;
+        }
 
         try {
-            // Verify Custom OTP via Node Server
-            await app.verifyOTP(phoneToVerify, otpStr);
+            // Verify OTP via Email endpoint
+            await app.verifyOTP(emailToVerify, otpStr);
 
             if (app.tempRegData) {
-                // Now insert the confirmed user into our custom local users table
                 const response = await fetch('http://localhost:3000/api/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -282,21 +297,21 @@ window.app = {
                 const data = await response.json();
 
                 if (!response.ok) {
-                    app.showToast('Error saving user: ' + (data.error || 'Unknown error'));
-                    throw new Error(data.error || 'Registration failed. Phone might exist.');
+                    throw new Error(data.error || 'Registration failed. Email or phone may already exist.');
                 }
 
+                app.tempRegData.id = data.user_id;
                 localStorage.setItem(DB_KEY_SESSION, JSON.stringify(app.tempRegData));
-                app.showToast('Registration Successful! Redirecting...');
+                app.showToast('✅ Registration Successful! Redirecting...');
                 setTimeout(() => window.location.replace('dashboard.html'), 1000);
 
             } else if (app.tempLoginUser) {
                 localStorage.setItem(DB_KEY_SESSION, JSON.stringify(app.tempLoginUser));
-                app.showToast('Login Successful! Redirecting...');
+                app.showToast('✅ Login Successful! Redirecting...');
                 setTimeout(() => window.location.replace('dashboard.html'), 1000);
             }
         } catch (err) {
-            console.error("OTP Verification Error: ", err);
+            console.error('OTP Verification Error:', err);
             app.showToast(err.message);
         }
     },
@@ -307,8 +322,14 @@ window.app = {
     },
 
     getCurrentUser: () => {
-        const user = localStorage.getItem(DB_KEY_SESSION);
-        return user ? JSON.parse(user) : null;
+        const userStr = localStorage.getItem(DB_KEY_SESSION);
+        if (!userStr || userStr === 'null' || userStr === 'undefined') return null;
+        const user = JSON.parse(userStr);
+        // Normalize bloodType from backend blood_group
+        if (user && !user.bloodType && user.blood_group) {
+            user.bloodType = user.blood_group;
+        }
+        return user;
     },
 
     fetchRequests: async () => {
@@ -323,48 +344,277 @@ window.app = {
         }
     },
 
-    loadHospitals: async () => {
-        try {
-            const banks = [
-                { id: '1', name: 'City Central Blood Bank', location: 'Downtown', geo_lat: 20.59, geo_lng: 78.96 },
-                { id: '2', name: 'Red Cross Hospital', location: 'North Side', geo_lat: 20.60, geo_lng: 78.95 },
-                { id: '3', name: 'Hope Clinic', location: 'West End', geo_lat: 28.6139, geo_lng: 77.2090 }, // Delhi
-                { id: '4', name: 'General Hospital', location: 'East Side', geo_lat: 17.3850, geo_lng: 78.4867 }  // Hyderabad
-            ];
+    // ==== Map-based Location Picker ====
+    /**
+     * Initialise the interactive Leaflet map inside the New Request form.
+     * Uses OpenStreetMap + Overpass API to show nearby hospitals/blood banks.
+     * User clicks a marker popup button to select that facility.
+     */
+    initLocationMapPicker: () => {
+        // Destroy stale map instance (e.g. navigating back to the form)
+        if (app.locationPickerMap) {
+            app.locationPickerMap.remove();
+            app.locationPickerMap = null;
+        }
 
-            const select = document.getElementById('reqHospitalId');
-            if (select) {
-                select.innerHTML = '<option value="">Select Authorized Facility</option>';
-                banks.forEach(b => {
-                    const latlng = (b.geo_lat && b.geo_lng) ? `${b.geo_lat},${b.geo_lng}` : '';
-                    select.innerHTML += `<option value="${b.id}" data-location="${b.location}" data-latlng="${latlng}">${b.name} (${b.location})</option>`;
-                });
-            }
-        } catch (e) { console.error('Failed to load blood banks', e); }
+        const mapDiv = document.getElementById('locationPickerMap');
+        if (!mapDiv) return;
+
+        // Reset selection state
+        const locInput   = document.getElementById('reqSelectedLocation');
+        const locDisplay = document.getElementById('selectedLocationDisplay');
+        const locMsg     = document.getElementById('locationPickerMsg');
+        if (locInput)   locInput.value = '';
+        if (locDisplay) locDisplay.classList.add('hidden');
+        if (locMsg)     locMsg.textContent = '⏳ Detecting your location…';
+
+        if (!navigator.geolocation) {
+            if (locMsg) locMsg.textContent = '⚠️ Geolocation is not supported by your browser.';
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+
+                // Build map
+                app.locationPickerMap = L.map('locationPickerMap').setView([lat, lon], 14);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(app.locationPickerMap);
+
+                // "You are here" pulse marker
+                L.circleMarker([lat, lon], {
+                    radius: 9, color: '#dc2626', fillColor: '#dc2626', fillOpacity: 0.35, weight: 2
+                }).addTo(app.locationPickerMap).bindPopup('<b>📍 Your Location</b>').openPopup();
+
+                if (locMsg) locMsg.textContent = '🔍 Searching nearby hospitals & blood banks…';
+
+                // Query Overpass for hospitals + blood banks within 5 km
+                try {
+                    const radius = 5000;
+                    const query = `
+                        [out:json];
+                        (
+                          node["amenity"="hospital"](around:${radius},${lat},${lon});
+                          node["amenity"="clinic"](around:${radius},${lat},${lon});
+                          node["healthcare"="blood_bank"](around:${radius},${lat},${lon});
+                          way["amenity"="hospital"](around:${radius},${lat},${lon});
+                          way["amenity"="clinic"](around:${radius},${lat},${lon});
+                        );
+                        out center;
+                    `;
+
+                    const res = await fetch('https://overpass-api.de/api/interpreter', {
+                        method: 'POST', body: query
+                    });
+                    const data = await res.json();
+                    const elements = (data.elements || []).filter(el => el.tags && el.tags.name);
+
+                    // ── Store for inclusion in the request POST body ──────────────
+                    // This lets the server use REAL nearby facilities instead of
+                    // re-querying the Overpass API (which is rate-limited server-side).
+                    app._mapPickerBanks = elements
+                        .map(el => ({
+                            name: el.tags.name,
+                            type: el.tags['healthcare'] === 'blood_bank' ? 'Blood Bank' : 'Hospital',
+                            lat:  el.center ? el.center.lat : el.lat,
+                            lon:  el.center ? el.center.lon : el.lon
+                        }))
+                        .filter(b => b.lat && b.lon);
+
+                    if (elements.length === 0) {
+                        if (locMsg) locMsg.textContent = '⚠️ No hospitals found within 5 km. Please try to request from a different location.';
+                    } else {
+                        if (locMsg) locMsg.textContent = `✅ Found ${elements.length} facilit${elements.length === 1 ? 'y' : 'ies'}. Click a red marker then "Select" to choose.`;
+                    }
+
+                    elements.forEach(el => {
+                        const eLat = el.center ? el.center.lat : el.lat;
+                        const eLon = el.center ? el.center.lon : el.lon;
+                        if (!eLat || !eLon) return;
+
+                        const type = el.tags['healthcare'] === 'blood_bank' ? '🩸 Blood Bank' : '🏥 Hospital';
+                        const name = el.tags.name;
+                        // Escape single quotes for inline onclick
+                        const safeName = name.replace(/'/g, '\\u0027');
+
+                        const icon = L.divIcon({
+                            className: 'custom-drop-marker',
+                            html: type === '🏥 Hospital'
+                                  ? `<div style="font-size: 24px; text-shadow: 0 0 5px rgba(0,0,0,0.5);">🏥</div>`
+                                  : `<div style="font-size: 24px; text-shadow: 0 0 5px rgba(0,0,0,0.5);">🩸</div>`,
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12]
+                        });
+
+                        L.marker([eLat, eLon], { icon })
+                            .addTo(app.locationPickerMap)
+                            .bindPopup(`
+                                <div style="min-width:160px">
+                                  <strong style="font-size:0.9rem">${name}</strong><br>
+                                  <small style="color:#6b7280">${type}</small><br>
+                                  <button type="button"
+                                    onclick="app.selectLocation('${safeName}',${eLat},${eLon})"
+                                    style="margin-top:6px;padding:5px 12px;background:#dc2626;color:white;border:none;border-radius:6px;cursor:pointer;font-size:0.8rem;font-weight:600;">
+                                    ✅ Select
+                                  </button>
+                                </div>
+                            `);
+                    });
+
+                } catch (err) {
+                    if (locMsg) locMsg.textContent = '⚠️ Could not load real hospitals via API. Displaying fallback facilities nearby.';
+                    
+                    // Fallback to simulated hospitals so the user is not stuck
+                    const fallbackHospitals = [
+                        { name: 'City Central Blood Bank', lat: lat + 0.015, lon: lon + 0.012, type: '🩸 Blood Bank' },
+                        { name: 'Regional Medical Centre', lat: lat - 0.010, lon: lon - 0.008, type: '🏥 Hospital' }
+                    ];
+
+                    fallbackHospitals.forEach(el => {
+                        const icon = L.divIcon({
+                            className: 'custom-drop-marker',
+                            html: el.type === '🏥 Hospital'
+                                  ? `<div style="font-size: 24px; text-shadow: 0 0 5px rgba(0,0,0,0.5);">🏥</div>`
+                                  : `<div style="font-size: 24px; text-shadow: 0 0 5px rgba(0,0,0,0.5);">🩸</div>`,
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12]
+                        });
+
+                        L.marker([el.lat, el.lon], { icon })
+                            .addTo(app.locationPickerMap)
+                            .bindPopup(`
+                                <div style="min-width:160px">
+                                  <strong style="font-size:0.9rem">${el.name}</strong><br>
+                                  <small style="color:#6b7280">${el.type}</small><br>
+                                  <button type="button"
+                                    onclick="app.selectLocation('${el.name}',${el.lat},${el.lon})"
+                                    style="margin-top:6px;padding:5px 12px;background:#dc2626;color:white;border:none;border-radius:6px;cursor:pointer;font-size:0.8rem;font-weight:600;">
+                                    ✅ Select
+                                  </button>
+                                </div>
+                            `);
+                    });
+                }
+            },
+            () => {
+                if (locMsg) locMsg.textContent = '⚠️ Location access denied. Please enable it in your browser and refresh.';
+            },
+            { timeout: 10000 }
+        );
     },
 
+    /**
+     * Called from marker popup button — stores the chosen hospital.
+     */
+    selectLocation: (name, lat, lon) => {
+        const value = `${name}|${lat},${lon}`;
+        const locInput   = document.getElementById('reqSelectedLocation');
+        const locDisplay = document.getElementById('selectedLocationDisplay');
+        const locName    = document.getElementById('selectedLocationName');
+        const locMsg     = document.getElementById('locationPickerMsg');
+
+        if (locInput)   locInput.value = value;
+        if (locName)    locName.textContent = name;
+        if (locDisplay) locDisplay.classList.remove('hidden');
+        if (locMsg)     locMsg.textContent = '✅ Hospital selected. Fill in the form and submit.';
+
+        if (app.locationPickerMap) app.locationPickerMap.closePopup();
+    },
+
+    /**
+     * Open a mini-map modal to show the hospital location (seeker & donor).
+     */
+    openLocationModal: (locationStr, title) => {
+        const modal = document.getElementById('locationViewModal');
+        if (!modal) return;
+
+        document.getElementById('locationViewTitle').textContent = title || 'Hospital Location';
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+
+        // Destroy old modal map
+        if (app._locViewMap) { app._locViewMap.remove(); app._locViewMap = null; }
+
+        const parts     = (locationStr || '').split('|');
+        const namePart  = parts[0];
+        const coordPart = parts[1];
+
+        let lat = 17.3850, lon = 78.4867;
+        if (coordPart) { const c = coordPart.split(','); lat = parseFloat(c[0]); lon = parseFloat(c[1]); }
+
+        setTimeout(() => {
+            app._locViewMap = L.map('locationViewMap').setView([lat, lon], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(app._locViewMap);
+
+            L.marker([lat, lon]).addTo(app._locViewMap)
+                .bindPopup(`<b>🏥 ${namePart}</b>`).openPopup();
+        }, 80); // slight delay so modal is visible
+    },
+
+    // ==== User Location Update ====
+    /**
+     * Sends the user's current GPS coordinates to the backend.
+     * Called when the dashboard loads.
+     */
+    updateUserLocation: () => {
+        const user = app.getCurrentUser();
+        if (!user) return;
+
+        if (!navigator.geolocation) return;
+
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                try {
+                    await fetch('http://localhost:3000/api/donors/update-location', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            donorId: user.id,
+                            lat: pos.coords.latitude,
+                            lng: pos.coords.longitude
+                        })
+                    });
+                    console.log(`📍 [Location] Updated: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+                } catch (err) {
+                    console.warn('📍 [Location] Could not update location:', err.message);
+                }
+            },
+            (err) => {
+                console.warn('📍 [Location] Permission denied or unavailable.');
+            },
+            { timeout: 8000, maximumAge: 60000 }
+        );
+    },
+
+    // ==== Create Blood Request ====
     createRequest: async (e) => {
         e.preventDefault();
         const user = app.getCurrentUser();
         if (!user) return;
 
-        const hospitalSelect = document.getElementById('reqHospitalId');
-        if (!hospitalSelect.value) {
-            app.showToast('Please select a hospital.');
+        // Read location from the hidden input populated by the map picker
+        const locationStr = (document.getElementById('reqSelectedLocation') || {}).value || '';
+        if (!locationStr) {
+            app.showToast('📍 Please select a hospital from the map first.');
             return;
         }
-        const selectedOption = hospitalSelect.options[hospitalSelect.selectedIndex];
-        const latlngData = selectedOption.dataset.latlng;
-        const locationStr = latlngData ? `${selectedOption.text}|${latlngData}` : (selectedOption.dataset.location || selectedOption.text);
 
         const requestData = {
-            id: '_' + Math.random().toString(36).substr(2, 9),
             seekerId: user.id,
             bloodType: document.getElementById('reqBloodType').value,
             quantity: document.getElementById('reqQuantity').value,
             location: locationStr,
             urgency: document.getElementById('reqUrgency').value
+            // nearbyBanks removed: server now queries Overpass directly
         };
+
+        const submitBtn = document.querySelector('#createRequestForm button[type="submit"]');
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Submitting…'; }
 
         try {
             const response = await fetch('http://localhost:3000/api/requests', {
@@ -375,12 +625,20 @@ window.app = {
             const data = await response.json();
             if (!response.ok) throw new Error(data.error);
 
-            app.showToast('Blood Request Submitted Successfully!');
+            app.showToast('🔍 Request submitted! Checking nearby blood banks…');
             document.getElementById('createRequestForm').reset();
-            app.renderSeekerRequests();
+            // Clear map selection
+            const locInput = document.getElementById('reqSelectedLocation');
+            const locDisplay = document.getElementById('selectedLocationDisplay');
+            if (locInput) locInput.value = '';
+            if (locDisplay) locDisplay.classList.add('hidden');
+
             switchView('my-requests');
+            app.renderSeekerRequests();
         } catch (err) {
             app.showToast(err.message);
+        } finally {
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Request'; }
         }
     },
 
@@ -400,113 +658,316 @@ window.app = {
         myRequests.forEach(req => container.appendChild(app.createRequestCardHTML(req, true)));
     },
 
-    renderDonorMatches: async () => {
+    renderNewRequests: async () => {
         const user = app.getCurrentUser();
         const container = document.getElementById('requestsListContainer');
         container.innerHTML = '';
 
         if (!user) return;
 
-        // Eligibility check
-        if (user.availability === 'No') {
-            container.innerHTML = '<p style="color:var(--text-muted)">You are marked as unavailable to donate.</p>';
-            return;
-        }
+        try {
+            const response = await fetch(`http://localhost:3000/api/requests/new?userId=${user.id}`);
+            const matches = await response.json();
+            
+            if (!response.ok) throw new Error(matches.error);
 
-        if (user.age && (user.age < 18 || user.age > 65)) {
-            container.innerHTML = '<p style="color:var(--text-muted)">You do not meet the minimum age requirements to donate.</p>';
-            return;
-        }
-
-        if (user.lastDonationDate) {
-            const lastDate = new Date(user.lastDonationDate);
-            const today = new Date();
-            const diffTime = Math.abs(today - lastDate);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            if (diffDays < 90) {
-                container.innerHTML = `<p style="color:var(--text-muted)">You must wait 90 days between donations. Days remaining: ${90 - diffDays}</p>`;
+            if (matches.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-muted);">No open targeted requests found for you.</p>';
                 return;
             }
+
+            matches.forEach(req => container.appendChild(app.createRequestCardHTML(req, false)));
+        } catch (err) {
+            container.innerHTML = `<p style="color: var(--primary-red);">Error loading requests: ${err.message}</p>`;
         }
-
-        if (user.diseases && user.diseases.toLowerCase() !== 'none' && user.diseases.length > 2) {
-            container.innerHTML = '<p style="color:var(--text-muted)">Based on your medical history, you are currently ineligible to donate.</p>';
-            return;
-        }
-
-        const requests = await app.fetchRequests();
-        const matches = requests.filter(r => {
-            if (r.status !== 'Open') return false;
-            if (r.seekerId === user.id) return false; // Isolate own requests
-            return r.bloodType === user.bloodType || user.bloodType === 'O-';
-        });
-
-        if (matches.length === 0) {
-            container.innerHTML = '<p style="color: var(--text-muted);">No open requests matching your blood group found.</p>';
-            return;
-        }
-
-        matches.forEach(req => container.appendChild(app.createRequestCardHTML(req, false)));
     },
 
+    // ==== Request Card HTML (redesigned) ====
     createRequestCardHTML: (req, isSeeker) => {
         const date = new Date(req.timestamp).toLocaleString();
-        let statusColor = 'status-open';
-        if (req.status === 'Accepted') statusColor = 'status-accepted';
-        if (req.status === 'Completed') statusColor = 'status-completed';
+        const user = app.getCurrentUser();
+
+        // Status colour mapping
+        const statusColorMap = {
+            'Open':               'status-open',
+            'BloodBankChecking':  'status-checking',
+            'BloodBankAvailable': 'status-bank-available',
+            'BloodBankPartial':   'status-bank-partial',
+            'DonorNeeded':        'status-donor-needed',
+            'Accepted':           'status-accepted',
+            'Completed':          'status-completed',
+            'Cancelled':          'status-cancelled',
+            'pending':            'status-open',
+            'Rejected':           'status-cancelled'
+        };
+
+        const statusLabelMap = {
+            'Open':               '🟢 Open',
+            'BloodBankChecking':  '🔍 Checking Blood Banks...',
+            'BloodBankAvailable': '🏥 Blood Available at Bank',
+            'BloodBankPartial':   '🟡 Partial Stock at Blood Bank',
+            'DonorNeeded':        '🩸 Donor Needed',
+            'Accepted':           '✅ Accepted',
+            'Completed':          '🏁 Completed',
+            'Cancelled':          '🚫 Cancelled',
+            'pending':            '🕒 Pending targeted request',
+            'Rejected':           '❌ Rejected'
+        };
+
+        const statusColor = statusColorMap[req.status] || 'status-open';
+        const statusLabel = statusLabelMap[req.status] || req.status;
+
+        // Parse location nicely
+        const locationDisplay = req.location ? req.location.split('|')[0] : 'Unknown';
+
+        // Blood bank result section
+        let bloodBankSection = '';
+        if (req.status === 'Completed') {
+            let completionMsg = 'Thank you for saving a life. This request has been fulfilled.';
+            let bankName = '';
+            if (req.bloodBankResult) {
+                let banks = [];
+                try { banks = JSON.parse(req.bloodBankResult); } catch(e){}
+                if (banks[0]) {
+                    bankName = banks[0].name;
+                    completionMsg = `Donation completed successfully from blood bank`;
+                }
+            }
+            bloodBankSection = `
+                <div class="blood-bank-panel" style="background:linear-gradient(135deg,#d1fae5,#ecfdf5);border:1.5px solid #10b981;">
+                    <div class="bb-panel-header">
+                        <span style="font-size:1.5rem">🎉</span>
+                        <strong style="color:#065f46">Donation Completed Successfully!</strong>
+                    </div>
+                    ${bankName ? `<p class="bb-note" style="color:#065f46; margin-top:0.3rem;">Blood Bank: <strong>${bankName}</strong></p>` : ''}
+                    <p class="bb-note" style="color:#065f46; margin-top:0.3rem;">${completionMsg}</p>
+                </div>
+            `;
+        } else if (req.bloodBankResult) {
+            let banks = [];
+            try { banks = JSON.parse(req.bloodBankResult); } catch (e) {}
+            const b = banks[0]; // always one bank in new pipeline
+
+            if (req.status === 'BloodBankAvailable' && b) {
+                bloodBankSection = `
+                    <div class="blood-bank-panel blood-bank-available">
+                        <div class="bb-panel-header">
+                            <span>🏥</span>
+                            <strong>Blood is available at ${b.name}</strong>
+                        </div>
+                        <div class="bb-bank-row" style="display:flex; flex-direction:column; gap:0.3rem; margin-top:0.5rem;">
+                            <div style="display:flex; justify-content:space-between;">
+                                <span class="bb-bank-name">${b.name}</span>
+                                <span style="color:#059669; font-weight:600;">Request Accepted ✅</span>
+                            </div>
+                            <div style="font-size:0.85rem; color:var(--text-muted);">Contact: <strong>${b.contact}</strong></div>
+                            <div style="font-size:0.85rem;">
+                                Requested Units: <strong>${b.requestedUnits}</strong> &nbsp;|
+                                Available Units: <strong style="color:#059669;">${b.availableUnits}</strong>
+                            </div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">📍 ${b.distanceKm} km away</div>
+                        </div>
+                        <p class="bb-note" style="margin-top:0.5rem; color:#065f46; font-size:0.8rem;">⏳ Auto-completing in 60 seconds...</p>
+                    </div>
+                `;
+            } else if (req.status === 'BloodBankPartial' && b) {
+                bloodBankSection = `
+                    <div class="blood-bank-panel blood-bank-partial">
+                        <div class="bb-panel-header">
+                            <span>🟡</span>
+                            <strong>Blood partially available at ${b.name}</strong>
+                        </div>
+                        <div class="bb-bank-row" style="display:flex; flex-direction:column; gap:0.3rem; margin-top:0.5rem;">
+                            <div style="font-size:0.85rem; color:var(--text-muted);">Contact: <strong>${b.contact}</strong></div>
+                            <div style="font-size:0.85rem;">
+                                Requested Units: <strong>${b.requestedUnits}</strong> &nbsp;|
+                                Available Units: <strong style="color:#d97706;">${b.availableUnits}</strong>
+                            </div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">📍 ${b.distanceKm} km away</div>
+                        </div>
+                        <p class="bb-note" style="margin-top:0.5rem; color:#92400e; font-size:0.8rem;">Proceeding with available units. Auto-completing in 60 seconds...</p>
+                    </div>
+                `;
+            } else if (req.status === 'DonorNeeded' && b) {
+                bloodBankSection = `
+                    <div class="blood-bank-panel blood-bank-unavailable">
+                        <div class="bb-panel-header">
+                            <span>⚠️</span>
+                            <strong>Blood is not available in nearby blood banks</strong>
+                        </div>
+                        <div style="font-size:0.85rem; color:var(--text-muted); margin-top:0.4rem;">Checked: <strong>${b.name}</strong> (${b.distanceKm} km away)</div>
+                        <p class="bb-note" style="margin-top:0.4rem;">${isSeeker ? 'Nearby eligible donors have been alerted via SMS.' : 'Your help is urgently needed!'}</p>
+                    </div>
+                `;
+            } else if (req.status === 'BloodBankChecking') {
+                bloodBankSection = `
+                    <div class="blood-bank-panel blood-bank-checking">
+                        <div class="bb-panel-header">
+                            <span class="bb-spinner">⏳</span>
+                            <strong>Searching nearby blood banks...</strong>
+                        </div>
+                        <div class="bb-progress-bar"><div class="bb-progress-fill"></div></div>
+                    </div>
+                `;
+            }
+        } else if (req.status === 'BloodBankChecking') {
+            bloodBankSection = `
+                <div class="blood-bank-panel blood-bank-checking">
+                    <div class="bb-panel-header">
+                        <span class="bb-spinner">⏳</span>
+                        <strong>Searching nearby blood banks (10 km radius)...</strong>
+                    </div>
+                    <div class="bb-progress-bar"><div class="bb-progress-fill"></div></div>
+                </div>
+            `;
+        }
+
+        // Action buttons
+        const isAcceptingDonor = !isSeeker && req.donorId === user.id;
+        let actionButtons = '';
+
+        if (isSeeker && req.status === 'Accepted') {
+            actionButtons = `<button type="button" class="btn btn-outline" style="padding:0.5rem 1rem; border-color:#2563eb; color:#2563eb;" onclick="switchView('chats'); setTimeout(()=>app.openChat('${req.id}'),100)">💬 Chat with Donor</button>`;
+        }
+
+        if (isSeeker && (req.status === 'BloodBankAvailable' || req.status === 'BloodBankPartial')) {
+            actionButtons = `<button type="button" class="btn btn-primary" onclick="app.completeBloodBankDonation('${req.id}')">Mark as Donation Completed</button>`;
+        }
+
+        if (!isSeeker && (req.status === 'DonorNeeded' || req.status === 'Open')) {
+            actionButtons = `<button type="button" class="btn btn-primary" id="accept-btn-${req.id}" onclick="app.acceptRequest(event, '${req.id}')">🩸 Accept Request</button>`;
+        }
+
+        if (!isSeeker && req.status === 'pending') {
+            actionButtons = `
+                <button type="button" class="btn btn-primary" style="background:#16a34a; border-color:#16a34a; color:white; padding:0.5rem 1rem;" onclick="app.acceptTargetedRequest('${req.id}')">✅ Accept</button>
+                <button type="button" class="btn btn-outline" style="border-color:#dc2626; color:#dc2626; padding:0.5rem 1rem; margin-left:0.5rem;" onclick="app.rejectTargetedRequest('${req.id}')">❌ Reject</button>
+            `;
+        }
+
+        if (!isSeeker && req.status === 'Accepted' && !isAcceptingDonor) {
+            actionButtons = `<button type="button" class="btn btn-outline" disabled style="padding:0.5rem 1rem; border-color:#6b7280; color:#6b7280; opacity:0.6; cursor:not-allowed;">Already Accepted by Another Donor</button>`;
+        }
+
+        if (isAcceptingDonor && req.status === 'Accepted') {
+            actionButtons = `
+                <button type="button" class="btn btn-outline" style="padding:0.5rem 1rem; border-color:#2563eb; color:#2563eb;" onclick="switchView('chats'); setTimeout(()=>app.openChat('${req.id}'),100)">💬 Chat with Seeker</button>
+                <button type="button" class="btn btn-cancel" id="cancel-btn-${req.id}" onclick="app.cancelAcceptance('${req.id}')">↩ Cancel Acceptance</button>
+            `;
+        }
+
+        // Can seeker cancel this request?
+        const canCancel = isSeeker && !['Completed', 'Cancelled'].includes(req.status);
+        const safeLocation = (req.location || '').replace(/'/g, '\\u0027');
+        const safeTitle    = locationDisplay.replace(/'/g, '\\u0027');
 
         const card = document.createElement('div');
-        card.className = 'glass-card request-card';
-        card.innerHTML = `
-            <div class="request-header">
-                <div>
-                    <span class="blood-badge">${req.bloodType}</span>
-                    <span style="margin-left:1rem; font-weight:600;">${isSeeker ? req.quantity : 'Needed: ' + req.quantity} Units</span>
-                </div>
-                <span class="status-badge ${statusColor}">${req.status === 'Accepted' ? 'Accepted' : (isSeeker ? req.status : 'Match Found')}</span>
-            </div>
-            
-            <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem;">
-                Requested by: <span style="background:#e5e7eb; padding:2px 6px; border-radius:4px; font-size:0.75rem;">
-                ${isSeeker ? '(You)' : 'Anonymous Seeker (Hidden)'}
-                </span>
-            </p>
+        card.className = 'request-card';
+        card.style = 'border-left: 4px solid #dc2626; border-radius: 8px; padding: 1.5rem; background: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;';
+        card.dataset.requestId = req.id;
 
-            <div class="request-details">
-                <div class="detail-item">
-                    <span class="detail-label">Hospital Location</span>
-                    <span class="detail-value">${req.location}</span>
+        // Custom visual logic for "MATCH FOUND" badge
+        let topBadgeInfo = '';
+        if (canCancel) {
+            topBadgeInfo = `<button type="button" class="btn-card-cancel" id="cancel-req-${req.id}" title="Cancel Request" onclick="app.cancelRequest('${req.id}')">✕ Cancel</button>`;
+        } else if (!isSeeker && (req.status === 'Open' || req.status === 'DonorNeeded')) {
+            topBadgeInfo = `<span style="background: #e0f2fe; color: #0369a1; border-radius: 999px; padding: 4px 12px; font-weight: bold; font-size: 0.75rem; text-transform: uppercase;">MATCH FOUND</span>`;
+        } else {
+            topBadgeInfo = `<span class="status-badge ${statusColor}">${req.status === 'Accepted' && !isAcceptingDonor ? '✅ Accepted' : statusLabel}</span>`;
+        }
+
+        let contactDisplay = '';
+        if (req.bloodBankResult) {
+            try { 
+                let bks = JSON.parse(req.bloodBankResult); 
+                const availableBank = bks.find(b => b.available && b.units > 0);
+                if (availableBank) contactDisplay = `<br><span style="color:#2563eb; font-size:0.8rem">📞 ${availableBank.contact}</span>`;
+            } catch(e){}
+        }
+
+        let styledActionButtons = actionButtons.replace('class="btn btn-primary"', 'class="btn btn-primary shadow-sm" style="background:#dc2626; color:white; padding:0.5rem 1rem;"');
+
+        card.innerHTML = `
+            <!-- Top row -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="background: #fee2e2; color: #dc2626; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1px solid #fecaca; font-size: 1.1rem;">
+                        ${req.bloodType}
+                    </div>
+                    <span style="font-weight: 600; color: #1f2937;">${isSeeker ? req.quantity : 'Needed: ' + req.quantity} Units</span>
                 </div>
-                <div class="detail-item">
-                    <span class="detail-label">Urgency</span>
-                    <span class="detail-value" style="color: ${req.urgency === 'Critical' ? 'red' : 'inherit'}">${req.urgency}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Posted On</span>
-                    <span class="detail-value" style="font-size:0.85rem">${date}</span>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    ${topBadgeInfo}
                 </div>
             </div>
-            
-            <div style="margin-top:1rem;">
-                ${isSeeker && req.status === 'Accepted' ?
-                `<button type="button" class="btn btn-outline" style="padding:0.5rem 1rem; border-color:#2563eb; color:#2563eb;" onclick="switchView('chats'); setTimeout(()=>app.openChat('${req.id}'),100)">Chat with Donor</button>`
-                : ''}
-                
-                ${!isSeeker && req.status === 'Open' ?
-                `<button type="button" class="btn btn-primary" onclick="app.acceptRequest(event, '${req.id}')">Accept Request</button>`
-                : ''}
-                
-                ${!isSeeker && req.status === 'Accepted' ?
-                `<button type="button" class="btn btn-outline" disabled style="padding:0.5rem 1rem; border-color:#6b7280; color:#6b7280; opacity:0.6;">Already Accepted by Another Donor</button>`
-                : ''}
+
+            <!-- Requested by -->
+            <div style="margin-top: 0.5rem;">
+                <span style="font-size: 0.85rem; color: #6b7280;">Requested by:</span>
+                <span style="background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 4px;">${isSeeker ? '(You)' : 'Anonymous Seeker (Hidden)'}</span>
+            </div>
+
+            <!-- Three columns -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem; margin-top: 1rem; border-top: 1px solid #f3f4f6; padding-top: 1rem;">
+                <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                    <span style="color: #6b7280; font-size: 0.70rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Hospital Location</span>
+                    <strong style="color: #1f2937; font-size: 0.85rem; line-height: 1.2;">
+                        ${locationDisplay}
+                        ${req.location && req.location.includes('|') ? `<br><button type="button" onclick="app.openLocationModal('${safeLocation}','${safeTitle}')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:0.75rem;padding:0;text-decoration:underline;white-space:nowrap;margin-top:2px;">📍 View Map</button>` : ''}
+                    </strong>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                    <span style="color: #6b7280; font-size: 0.70rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Urgency</span>
+                    <strong style="color: ${req.urgency === 'Critical' ? '#dc2626' : '#1f2937'}; font-size: 0.85rem;">${req.urgency}</strong>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                    <span style="color: #6b7280; font-size: 0.70rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Posted On</span>
+                    <strong style="color: #1f2937; font-size: 0.85rem;">${date}</strong>
+                </div>
+            </div>
+
+            <!-- Blood Bank Search Result Panel -->
+            ${bloodBankSection}
+
+            <div style="margin-top: 0.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                ${styledActionButtons}
             </div>
         `;
         return card;
     },
 
+    // ==== Cancel Request (Seeker only) ====
+    cancelRequest: async (reqId) => {
+        if (!confirm('Cancel this blood request? This cannot be undone.')) return;
+        const user = app.getCurrentUser();
+
+        const btn = document.getElementById(`cancel-req-${reqId}`);
+        if (btn) { btn.disabled = true; btn.textContent = 'Cancelling…'; }
+
+        try {
+            const response = await fetch(`http://localhost:3000/api/requests/${reqId}/cancel`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ seekerId: user.id })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+            app.showToast('🚫 Request cancelled.');
+            app.renderSeekerRequests();
+        } catch (err) {
+            if (btn) { btn.disabled = false; btn.textContent = '✕ Cancel'; }
+            app.showToast(err.message);
+        }
+    },
+
+    // ==== Accept Request ====
     acceptRequest: async (e, reqId) => {
         if (e) e.preventDefault();
         const user = app.getCurrentUser();
+
+        // Disable button immediately
+        const btn = document.getElementById(`accept-btn-${reqId}`);
+        if (btn) { btn.disabled = true; btn.innerText = 'Accepting...'; }
 
         try {
             const response = await fetch(`http://localhost:3000/api/requests/${reqId}/accept`, {
@@ -517,11 +978,67 @@ window.app = {
             const data = await response.json();
             if (!response.ok) throw new Error(data.error);
 
-            app.showToast('Request Accepted! You can now communicate with the seeker.');
+            app.showToast('✅ Request Accepted! You can now communicate with the seeker.');
             switchView('chats');
             setTimeout(() => app.openChat(reqId), 100);
             app.updateDashboardStats();
         } catch (err) {
+            if (btn) { btn.disabled = false; btn.innerText = '🩸 Accept Request'; }
+            app.showToast(err.message);
+        }
+    },
+
+    acceptTargetedRequest: async (reqId) => {
+        try {
+            const response = await fetch(`http://localhost:3000/api/requests/${reqId}/accept-targeted`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+            app.showToast('✅ Targeted Request Accepted!');
+            // Reload requests
+            app.renderNewRequests();
+        } catch (err) {
+            app.showToast(err.message);
+        }
+    },
+
+    rejectTargetedRequest: async (reqId) => {
+        try {
+            const response = await fetch(`http://localhost:3000/api/requests/${reqId}/reject-targeted`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+            app.showToast('❌ Targeted Request Rejected.');
+            // Reload requests
+            app.renderNewRequests();
+        } catch (err) {
+            app.showToast(err.message);
+        }
+    },
+
+    // ==== Cancel Acceptance ====
+    cancelAcceptance: async (reqId) => {
+        if (!confirm('Are you sure you want to cancel your acceptance? The request will be opened to other donors.')) return;
+
+        const btn = document.getElementById(`cancel-btn-${reqId}`);
+        if (btn) { btn.disabled = true; btn.innerText = 'Cancelling...'; }
+
+        try {
+            const response = await fetch(`http://localhost:3000/api/requests/${reqId}/cancel-acceptance`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+
+            app.showToast('↩ Acceptance cancelled. The request is now open to other donors.');
+            app.renderDonorMatches();
+        } catch (err) {
+            if (btn) { btn.disabled = false; btn.innerText = '↩ Cancel Acceptance'; }
             app.showToast(err.message);
         }
     },
@@ -533,7 +1050,9 @@ window.app = {
             try {
                 // Update request
                 const response = await fetch(`http://localhost:3000/api/requests/${app.currentChatReqId}/complete`, {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ donorId: app.getCurrentUser().id })
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error);
@@ -562,6 +1081,23 @@ window.app = {
         }
     },
 
+    completeBloodBankDonation: async (reqId) => {
+        try {
+            app.showToast('Completing donation...');
+            const response = await fetch(`http://localhost:3000/api/requests/${reqId}/complete-bank`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            if(!response.ok) throw new Error(data.error);
+
+            app.showToast('Donation completed successfully');
+            app.renderSeekerRequests();
+        } catch (err) {
+            app.showToast(err.message);
+        }
+    },
+
     updateDashboardStats: async () => {
         const user = app.getCurrentUser();
         if (!user) return;
@@ -571,7 +1107,10 @@ window.app = {
             const count = requests.filter(r => r.seekerId === user.id).length;
             document.getElementById('stat-1').innerText = count;
         } else {
-            const count = requests.filter(r => r.status === 'Open' && (r.bloodType === user.bloodType || user.bloodType === 'O-')).length;
+            const count = requests.filter(r =>
+                (r.status === 'Open' || r.status === 'DonorNeeded') &&
+                (r.bloodType === user.bloodType || user.bloodType === 'O-')
+            ).length;
             document.getElementById('stat-1').innerText = count;
         }
     },
@@ -583,22 +1122,22 @@ window.app = {
 
         app.socket.on('request_updated', (reqId) => {
             app.updateDashboardStats();
-            const listEl = document.getElementById('view-list');
-            if (listEl && !listEl.classList.contains('hidden')) {
-                // Refresh both seeker requests and donor matches
+            // Re-render whatever list is currently active
+            if (document.getElementById('nav-available') && document.getElementById('nav-available').classList.contains('active')) {
+                app.renderNewRequests();
+            } else if (document.getElementById('nav-my-requests') && document.getElementById('nav-my-requests').classList.contains('active')) {
                 app.renderSeekerRequests();
-                app.renderDonorMatches();
             }
             if (app.currentChatReqId === reqId) app.openChat(reqId);
         });
 
         app.socket.on('new_request', () => {
-            app.showToast('A new blood request was just posted!');
+            app.showToast('🩸 A new blood request was just posted!');
             app.updateDashboardStats();
-            const listEl = document.getElementById('view-list');
-            if (listEl && !listEl.classList.contains('hidden')) {
+            if (document.getElementById('nav-available') && document.getElementById('nav-available').classList.contains('active')) {
+                app.renderNewRequests();
+            } else if (document.getElementById('nav-my-requests') && document.getElementById('nav-my-requests').classList.contains('active')) {
                 app.renderSeekerRequests();
-                app.renderDonorMatches();
             }
         });
 
@@ -624,11 +1163,14 @@ window.app = {
             sidebar.innerHTML = '<p style="color: var(--text-muted); padding: 1rem;">No active communications.</p>';
             document.getElementById('activeChatWindow').style.display = 'none';
             return;
+        } else if (!app.currentChatReqId || !activeRequests.some(r => r.id === app.currentChatReqId)) {
+            // Auto open first chat if none is selected
+            setTimeout(() => app.openChat(activeRequests[0].id), 50);
         }
 
         activeRequests.forEach(req => {
             const div = document.createElement('div');
-            const isSeeker = user.role === 'seeker';
+            const isSeeker = req.seekerId === user.id;
             const partnerName = isSeeker ? req.donorName : req.seekerName;
 
             div.className = 'nav-item';
@@ -654,10 +1196,10 @@ window.app = {
         app.currentChatReqId = reqId;
         if (app.socket) app.socket.emit('join_chat', reqId);
 
-        const isSeeker = user.role === 'seeker';
+        const isSeeker = request.seekerId === user.id;
 
         document.getElementById('chatPartnerName').innerText = isSeeker ? `Donor: ${request.donorName}` : `Seeker: ${request.seekerName}`;
-        document.getElementById('chatPartnerDetails').innerText = isSeeker ? `Phone: ${request.donorPhone || 'Hidden'}` : `Phone: ${request.seekerPhone} | Location: ${request.location}`;
+        document.getElementById('chatPartnerDetails').innerText = isSeeker ? `Phone: ${request.donorPhone || 'Hidden'}` : `Phone: ${request.seekerPhone} | Location: ${request.location ? request.location.split('|')[0] : 'Unknown'}`;
 
         const statusBadge = document.getElementById('chatRequestStatus');
         statusBadge.innerText = request.status;
@@ -844,9 +1386,9 @@ window.app = {
 // Event Listeners Registration
 document.addEventListener('DOMContentLoaded', () => {
     // Auth events
-    if (document.getElementById('registerForm')) document.getElementById('registerForm').addEventListener('submit', (e) => app.handleAuthSubmit(e, 'registerForm'));
+    // NOTE: registerForm and otpForm are handled by the inline DOMContentLoaded block in index.html
+    // Only loginForm uses app.handleAuthSubmit here
     if (document.getElementById('loginForm')) document.getElementById('loginForm').addEventListener('submit', (e) => app.handleAuthSubmit(e, 'loginForm'));
-    if (document.getElementById('otpForm')) document.getElementById('otpForm').addEventListener('submit', app.handleOTPVerify);
 
     // Dashboard events
     if (document.getElementById('createRequestForm')) document.getElementById('createRequestForm').addEventListener('submit', app.createRequest);
@@ -857,10 +1399,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (chatInput) {
         const locBtn = document.createElement('button');
         locBtn.type = 'button';
-        locBtn.className = 'btn btn-outline';
-        locBtn.innerText = '📍';
+        locBtn.className = 'btn';
+        locBtn.innerHTML = '📍';
         locBtn.title = 'Share Location';
-        locBtn.style.padding = '0 1rem';
+        locBtn.style = 'background: white; border: 1px solid #dc2626; color: #dc2626; border-radius: 8px; padding: 0.75rem 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;';
         locBtn.onclick = () => {
             app.showToast('Retrieving location...');
             navigator.geolocation.getCurrentPosition((pos) => {
@@ -873,4 +1415,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Attempt Socket Init
     app.setupSockets();
+
+    // Update donor location on dashboard load
+    app.updateUserLocation();
 });

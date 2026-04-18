@@ -9,6 +9,11 @@
     <link rel="stylesheet" href="styles/main.css">
     <!-- Leaflet CSS for Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
 </head>
 
 <body>
@@ -23,7 +28,15 @@
             </svg>
             LifeDrop
         </div>
-        <div class="nav-links">
+        <div class="nav-links" style="display: flex; align-items: center; gap: 2rem;">
+            <a onclick="smoothScrollToCenter('home')"
+                style="color: var(--text-main); text-decoration: none; font-weight: 500; cursor: pointer; font-size: 0.9rem;">Home</a>
+            <a onclick="smoothScrollToCenter('about')"
+                style="color: var(--text-main); text-decoration: none; font-weight: 500; cursor: pointer; font-size: 0.9rem;">About
+                Us</a>
+            <a onclick="smoothScrollToCenter('contact')"
+                style="color: var(--text-main); text-decoration: none; font-weight: 500; cursor: pointer; font-size: 0.9rem;">Contact
+                Us</a>
             <button class="btn btn-outline" style="margin-right: 0.5rem;" onclick="openAuthModal('login')">Sign
                 In</button>
             <button class="btn btn-primary" onclick="openAuthModal('register')">Sign Up</button>
@@ -32,14 +45,14 @@
 
     <!-- Main Wrapper for Hero + Auth -->
     <!-- Hero Section -->
-    <main class="hero-section">
+    <main class="hero-section" id="home"
+        style="background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); padding: 4rem 10%;">
         <div class="hero-content">
-            <h1 style="font-size: 3.5rem; color: var(--text-main); line-height: 1.2; margin-bottom: 1.5rem;">
+            <h1 style="font-size: 3rem; color: #1f2937; line-height: 1.2; margin-bottom: 1.5rem; font-weight: 700;">
                 Save a Life,<br>
-                <span class="gradient-text" style="font-size: 4.5rem; font-weight: 800;">Give
-                    Blood</span>
+                <span style="font-size: 4rem; font-weight: 800;">Give Blood</span>
             </h1>
-            <p style="font-size: 1.25rem; color: var(--text-muted); margin-bottom: 2rem; max-width: 600px;">
+            <p style="font-size: 1.15rem; color: #4b5563; margin-bottom: 2rem; max-width: 600px; line-height: 1.8;">
                 "A single drop of blood can make a huge difference."<br><br>
                 Connect instantly with nearby donors during emergencies. Our intelligent matching
                 system ensures that blood seekers find the right donors quickly, privately, and
@@ -53,32 +66,136 @@
             <!-- Colorful abstract/medical illustrations -->
             <img src="https://images.unsplash.com/photo-1615461066841-6116e61058f4?auto=format&fit=crop&q=80&w=800"
                 alt="Blood Donation"
-                style="width: 100%; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); transform: rotate(2deg); transition: transform 0.3s ease;">
+                style="width: 100%; height: 280px; object-fit: cover; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.15);">
         </div>
     </main>
 
+
+
     <!-- Information / Quotes Section -->
-    <section style="padding: 5rem 10%; background: white;">
-        <h2 style="text-align: center; margin-bottom: 3rem; font-size: 2.5rem; color: var(--text-main);">
+    <section style="padding: 5rem 10%; background: #f8f9fa;">
+        <h2 style="text-align: center; margin-bottom: 3rem; font-size: 2.5rem; color: #1f2937; font-weight: 700;">
             Why Donate Blood?</h2>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
             <div class="glass-card" style="text-align: center; padding: 2rem; background: #fff1f2; border: none;">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">❤️</div>
-                <h3 style="margin-bottom: 1rem;">Save up to 3 lives</h3>
-                <p style="color: var(--text-muted);">Every donation can be separated into red cells,
+                <div style="font-size: 3.5rem; margin-bottom: 1rem;">❤️</div>
+                <h3 style="margin-bottom: 1rem; font-size: 1.2rem; font-weight: 600;">Save up to 3 lives</h3>
+                <p style="color: #4b5563; font-size: 1rem;">Every donation can be separated into red cells,
                     platelets, and plasma, potentially saving multiple patients.</p>
             </div>
             <div class="glass-card" style="text-align: center; padding: 2rem; background: #fef2f2; border: none;">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">⚡</div>
-                <h3 style="margin-bottom: 1rem;">Quick & Safe</h3>
-                <p style="color: var(--text-muted);">The actual blood draw takes only 8-10 minutes.
+                <div style="font-size: 3.5rem; margin-bottom: 1rem;">⚡</div>
+                <h3 style="margin-bottom: 1rem; font-size: 1.2rem; font-weight: 600;">Quick & Safe</h3>
+                <p style="color: #4b5563; font-size: 1rem;">The actual blood draw takes only 8-10 minutes.
                     The process is completely safe with sterile, single-use equipment.</p>
             </div>
             <div class="glass-card" style="text-align: center; padding: 2rem; background: #fff1f2; border: none;">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">🏥</div>
-                <h3 style="margin-bottom: 1rem;">Constant Need</h3>
-                <p style="color: var(--text-muted);">Someone needs blood every two seconds. Your
+                <div style="font-size: 3.5rem; margin-bottom: 1rem;">🏥</div>
+                <h3 style="margin-bottom: 1rem; font-size: 1.2rem; font-weight: 600;">Constant Need</h3>
+                <p style="color: #4b5563; font-size: 1rem;">Someone needs blood every two seconds. Your
                     contribution ensures hospitals are always prepared.</p>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Blood Compatibility Section -->
+    <section style="padding: 5rem 10%; background: #faf9f7;">
+        <h2 style="text-align: center; margin-bottom: 3rem; font-size: 2.5rem; color: #1f2937; font-weight: 700;">Blood
+            Compatibility</h2>
+        <div style="max-width: 1000px; margin: 0 auto; overflow-x: auto;">
+            <table
+                style="width: 100%; border-collapse: collapse; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden;">
+                <thead>
+                    <tr style="background: #dc2626; color: white;">
+                        <th style="padding: 1rem; text-align: left; font-weight: 600;">Blood Type</th>
+                        <th style="padding: 1rem; text-align: left; font-weight: 600;">Donate Blood To</th>
+                        <th style="padding: 1rem; text-align: left; font-weight: 600;">Receive Blood From</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid #e5e7eb; background: #fafafa;">
+                        <td style="padding: 1rem; color: #dc2626; font-weight: 600;">A+</td>
+                        <td style="padding: 1rem; color: var(--text-main);">A+, AB+</td>
+                        <td style="padding: 1rem; color: var(--text-main);">A+, A-, O+, O-</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 1rem; color: #dc2626; font-weight: 600;">O+</td>
+                        <td style="padding: 1rem; color: var(--text-main);">O+, A+, B+, AB+</td>
+                        <td style="padding: 1rem; color: var(--text-main);">O+, O-</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb; background: #fafafa;">
+                        <td style="padding: 1rem; color: #dc2626; font-weight: 600;">B+</td>
+                        <td style="padding: 1rem; color: var(--text-main);">B+, AB+</td>
+                        <td style="padding: 1rem; color: var(--text-main);">B+, B-, O+, O-</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 1rem; color: #dc2626; font-weight: 600;">AB+</td>
+                        <td style="padding: 1rem; color: var(--text-main);">AB+</td>
+                        <td style="padding: 1rem; color: var(--text-main);">Everyone</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb; background: #fafafa;">
+                        <td style="padding: 1rem; color: #dc2626; font-weight: 600;">A-</td>
+                        <td style="padding: 1rem; color: var(--text-main);">A+, A-, AB+, AB-</td>
+                        <td style="padding: 1rem; color: var(--text-main);">A-, O-</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 1rem; color: #dc2626; font-weight: 600;">O-</td>
+                        <td style="padding: 1rem; color: var(--text-main);">Everyone</td>
+                        <td style="padding: 1rem; color: var(--text-main);">O-</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb; background: #fafafa;">
+                        <td style="padding: 1rem; color: #dc2626; font-weight: 600;">B-</td>
+                        <td style="padding: 1rem; color: var(--text-main);">B+, B-, AB+, AB-</td>
+                        <td style="padding: 1rem; color: var(--text-main);">B-, O-</td>
+                    </tr>
+                    <tr style="background: #fafafa;">
+                        <td style="padding: 1rem; color: #dc2626; font-weight: 600;">AB-</td>
+                        <td style="padding: 1rem; color: var(--text-main);">AB+, AB-</td>
+                        <td style="padding: 1rem; color: var(--text-main);">AB-, A-, B-, O-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- About Us Section -->
+    <section
+        style="padding: 5rem 10%; background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); text-align: center;"
+        id="about">
+        <h2 style="text-align: center; margin-bottom: 2rem; font-size: 2.5rem; color: #1f2937; font-weight: 700;">About
+            Us</h2>
+        <p style="max-width: 900px; margin: 0 auto; font-size: 1.15rem; color: #4b5563; line-height: 1.9;">
+            LifeDrop is a modern blood donation platform dedicated to connecting blood seekers with willing donors in
+            real-time. Recognizing the critical delay in emergencies, we use location-based matching to instantly notify
+            nearby eligible donors. Our goal is to create a seamless, transparent, and prompt healthcare communication
+            system that eliminates the stressful friction during emergency blood requirements.
+        </p>
+    </section>
+
+    <!-- Contact Us Section -->
+    <section style="padding: 5rem 10%; background: linear-gradient(135deg, #e0f2fe 0%, #e8f7fd 100%);" id="contact">
+        <h2 style="text-align: center; margin-bottom: 3rem; font-size: 2.5rem; color: #0c4a6e; font-weight: 700;">
+            Contact Us</h2>
+        <p style="text-align: center; margin-bottom: 2rem; font-size: 1.1rem; color: #0c4a6e;">Have questions or need
+            support? Reach out to us below.</p>
+        <div class="glass-card"
+            style="max-width: 600px; margin: 0 auto; padding: 2.5rem; text-align: center; border: none; background: rgba(255,255,255,0.8);">
+            <div style="margin-bottom: 2rem;">
+                <strong style="color: #0c4a6e; font-size: 1.15rem;">Email:</strong>
+                <p style="color: #0c4a6e; margin-top: 0.5rem; font-size: 1rem;">blooddonation495@gmail.com</p>
+            </div>
+            <div style="margin-bottom: 2rem;">
+                <strong style="color: #0c4a6e; font-size: 1.15rem;">Phone:</strong>
+                <p style="color: #0c4a6e; margin-top: 0.5rem; font-size: 1rem;">
+                    +91 8688950097<br>
+                    +91 8639730925<br>
+                    +91 96769 24488
+                </p>
+            </div>
+            <div>
+                <strong style="color: #0c4a6e; font-size: 1.15rem;">Office:</strong>
+                <p style="color: #0c4a6e; margin-top: 0.5rem; font-size: 1rem;">Hyderabad, Telangana, India</p>
             </div>
         </div>
     </section>
@@ -102,11 +219,11 @@
                 <!-- Sign In Form -->
                 <form id="loginForm">
                     <div class="form-group">
-                        <label>Phone Number</label>
-                        <input type="tel" class="form-control" id="loginPhone" placeholder="Enter 10-digit number"
-                            pattern="[0-9]{10}" maxlength="10" required>
+                        <label>Email Address</label>
+                        <input type="email" class="form-control" id="loginEmail"
+                            placeholder="Enter your registered email" required>
                     </div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">Send OTP</button>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Send OTP to Email</button>
                 </form>
 
                 <!-- Step 2: Role Selection Box (Hidden by default) -->
@@ -136,11 +253,18 @@
 
                     <div class="form-group">
                         <label>Full Name</label>
-                        <input type="text" class="form-control" id="regName" placeholder="Full Name" pattern="[A-Za-z\s]{2,50}" title="Only alphabets (A-Z, a-z) allowed" required>
+                        <input type="text" class="form-control" id="regName" placeholder="Full Name"
+                            pattern="[A-Za-z\s]{2,50}" title="Only alphabets (A-Z, a-z) allowed" required>
                     </div>
                     <div class="form-group">
                         <label>Phone Number</label>
-                        <input type="tel" class="form-control" id="regPhone" placeholder="10-digit number" pattern="[0-9]{10}" maxlength="10" title="Enter exactly 10 digits" required>
+                        <input type="tel" class="form-control" id="regPhone" placeholder="10-digit number"
+                            pattern="[0-9]{10}" maxlength="10" title="Enter exactly 10 digits" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" class="form-control" id="regEmail" placeholder="Enter your email address"
+                            required>
                     </div>
 
                     <div id="donorDetails" style="display: none;">
@@ -169,13 +293,13 @@
                             <label>Last Donation Date </label>
                             <input type="date" class="form-control" id="regLastDonationDate">
                         </div>
-                        <div class="form-group">
+                        <!-- <div class="form-group">
                             <label>Upload Recent Medical Blood Report</label>
                             <input type="file" class="form-control" id="regMedicalReport" accept="image/*,.pdf">
                             <small style="color: var(--text-muted);">Helps verify your blood group
                                 and eligibility
                                 faster.</small>
-                        </div>
+                        </div> -->
                     </div>
 
                     <div style="display: flex; gap: 1rem;">
@@ -210,9 +334,9 @@
 
                 <!-- OTP Verification Form (Hidden by default) -->
                 <form id="otpForm" class="hidden" style="text-align: center;">
-                    <h3 style="margin-bottom: 1rem;">Verify Phone Number</h3>
+                    <h3 style="margin-bottom: 1rem;">Verify Your Email</h3>
                     <p style="color: var(--text-muted); margin-bottom: 2rem; font-size: 0.9rem;">
-                        Please enter the 6-digit OTP sent to your phone.
+                        Please enter the 6-digit OTP sent to your <strong id="otpEmailDisplay">email address</strong>.
                     </p>
                     <div style="display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 2rem;">
                         <input type="text" class="form-control otp-input" maxlength="1" onkeyup="moveToNext(this, 1)"
@@ -238,15 +362,23 @@
                 <!-- Blood Seeker Request Form (Hidden by default) -->
                 <form id="seekerForm" class="hidden">
                     <h3 style="margin-bottom: 1.5rem; text-align: center;">Request Blood</h3>
-                    
+
                     <div class="form-group">
                         <label>Full Name</label>
-                        <input type="text" class="form-control" id="seekerName" placeholder="Full Name" pattern="[A-Za-z\s]{2,50}" title="Only alphabets (A-Z, a-z) allowed" required>
+                        <input type="text" class="form-control" id="seekerName" placeholder="Full Name"
+                            pattern="[A-Za-z\s]{2,50}" title="Only alphabets (A-Z, a-z) allowed" required>
                     </div>
 
                     <div class="form-group">
                         <label>Phone Number</label>
-                        <input type="tel" class="form-control" id="seekerPhone" placeholder="10-digit number" pattern="[0-9]{10}" maxlength="10" title="Enter exactly 10 digits" required>
+                        <input type="tel" class="form-control" id="seekerPhone" placeholder="10-digit number"
+                            pattern="[0-9]{10}" maxlength="10" title="Enter exactly 10 digits" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" class="form-control" id="seekerEmail" placeholder="Enter your email address"
+                            required>
                     </div>
 
                     <div class="form-group">
@@ -276,7 +408,8 @@
 
                     <div class="form-group">
                         <label>Number of Units Needed</label>
-                        <input type="number" class="form-control" id="seekerUnits" min="1" placeholder="Enter number of units" required>
+                        <input type="number" class="form-control" id="seekerUnits" min="1"
+                            placeholder="Enter number of units" required>
                     </div>
 
                     <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Request</button>
@@ -295,7 +428,8 @@
                 <button type="button" onclick="closeLocationMap(true)"
                     style="position: absolute; right: 15px; top: 15px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); z-index: 1000;">&times;</button>
                 <h3 style="margin-bottom: 1rem; text-align: center;">Select Your Location</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem; text-align: center;">Click anywhere on the map to set your location.</p>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem; text-align: center;">Click
+                    anywhere on the map to set your location.</p>
 
                 <div id="registrationMap" style="width: 100%; height: 300px; border-radius: 8px; margin-bottom: 1rem;">
                 </div>
@@ -313,10 +447,26 @@
 
     <!-- Supabase Client -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> -->
-    <script src="js/app.js"></script>
+    <script>
+        function smoothScrollToCenter(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                const elementTop = element.offsetTop;
+                const elementHeight = element.offsetHeight;
+                const windowHeight = window.innerHeight;
+                const scrollTo = elementTop + (elementHeight - windowHeight) / 2;
+
+                window.scrollTo({
+                    top: Math.max(0, scrollTo),
+                    behavior: 'smooth'
+                });
+            }
+        }
+    </script>
     <script>
         // Check if user is already logged in
-        if (localStorage.getItem('bt_currentUser')) {
+        const currentUserStr = localStorage.getItem('bt_currentUser');
+        if (currentUserStr && currentUserStr !== 'null' && currentUserStr !== 'undefined') {
             window.location.href = 'dashboard.html';
         }
 
@@ -443,55 +593,132 @@
 
         // Store seeker data temporarily for OTP verification
         let tempSeekerData = null;
+        let tempDonorData = null;
+        let isDonorRegistration = false;
+        let otpCooldownTime = 0;
+
+        // Track OTP cooldown
+        function startOTPCooldown(remainingSeconds) {
+            otpCooldownTime = Date.now() + (remainingSeconds * 1000);
+        }
+
+        function isOTPOnCooldown() {
+            return otpCooldownTime > Date.now();
+        }
+
+        function getRemainingCooldownTime() {
+            const remaining = Math.ceil((otpCooldownTime - Date.now()) / 1000);
+            return remaining > 0 ? remaining : 0;
+        }
 
         // Handle Seeker Form Submission
         document.addEventListener('DOMContentLoaded', function () {
-            const seekerForm = document.getElementById('seekerForm');
-            if (seekerForm) {
-                seekerForm.addEventListener('submit', async function (e) {
+            // ============ DONOR REGISTRATION FORM ============
+            const registerForm = document.getElementById('registerForm');
+            if (registerForm) {
+                registerForm.addEventListener('submit', async function (e) {
                     e.preventDefault();
-                    
-                    const name = document.getElementById('seekerName').value;
-                    const phone = document.getElementById('seekerPhone').value;
-                    const location = document.getElementById('seekerLocation').value;
-                    const bloodGroup = document.getElementById('seekerBloodGroup').value;
-                    const units = document.getElementById('seekerUnits').value;
+
+                    const name = document.getElementById('regName').value;
+                    const phone = document.getElementById('regPhone').value;
+                    const bloodType = document.getElementById('regBloodType').value;
+                    const city = document.getElementById('regCity').value;
+                    const age = document.getElementById('regAge').value;
+                    const gender = document.getElementById('regGender').value;
+                    const diseases = document.getElementById('regDiseases').value;
+                    const lastDonationDate = document.getElementById('regLastDonationDate').value;
+                    const medicalReportEl = document.getElementById('regMedicalReport');
+                    const medicalReport = medicalReportEl ? medicalReportEl.files[0] : undefined;
+
+                    // Validation
+                    if (!name || !phone || !bloodType || !city || !age || !gender) {
+                        app.showToast('Please fill all required fields');
+                        return;
+                    }
+
+                    // Check if OTP is on cooldown
+                    if (isOTPOnCooldown()) {
+                        const remaining = getRemainingCooldownTime();
+                        app.showToast(`Please wait ${remaining} seconds before requesting another OTP`);
+                        return;
+                    }
+
+                    const email = document.getElementById('regEmail').value.trim();
+                    if (!email || !email.includes('@')) {
+                        app.showToast('Please enter a valid email address.');
+                        return;
+                    }
 
                     try {
-                        app.showToast('Sending OTP to your phone...');
-                        
-                        // Store data for later use after OTP verification
-                        tempSeekerData = {
+                        app.showToast('Checking your details...');
+
+                        // ─ Duplicate check BEFORE sending OTP ─
+                        const dupCheck = await fetch(
+                            `http://localhost:3000/api/check-duplicate?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`
+                        );
+                        const dupData = await dupCheck.json();
+
+                        if (dupData.emailExists) {
+                            app.showToast('❌ This email is already registered. Please sign in instead.');
+                            return;
+                        }
+                        if (dupData.phoneExists) {
+                            app.showToast('❌ This phone number is already registered. Please sign in instead.');
+                            return;
+                        }
+
+                        app.showToast('Sending OTP to your email...');
+
+                        // Store donor data for later use after OTP verification
+                        tempDonorData = {
                             name: name,
                             phone: phone,
-                            location: location,
-                            bloodGroup: bloodGroup,
-                            units: units
+                            email: email,
+                            bloodType: bloodType,
+                            city: city,
+                            age: age,
+                            gender: gender,
+                            diseases: diseases,
+                            lastDonationDate: lastDonationDate,
+                            medicalReport: medicalReport
                         };
 
-                        // Request OTP
-                        const otpResponse = await fetch('http://localhost:3000/api/send-sms-otp', {
+                        isDonorRegistration = true;
+
+                        // Check cooldown
+                        if (isOTPOnCooldown()) {
+                            const remaining = getRemainingCooldownTime();
+                            app.showToast(`Please wait ${remaining} seconds before requesting another OTP`);
+                            return;
+                        }
+
+                        // Request OTP via Email
+                        const otpResponse = await fetch('http://localhost:3000/api/send-email-otp', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ phone: phone })
+                            body: JSON.stringify({ email: email })
                         });
 
                         const otpData = await otpResponse.json();
 
                         if (!otpResponse.ok) {
+                            if (otpResponse.status === 429) {
+                                startOTPCooldown(otpData.remainingSeconds || 10);
+                                throw new Error(otpData.error);
+                            }
                             throw new Error(otpData.error || 'Failed to send OTP');
                         }
 
-                        // Show demo OTP if in offline mode
-                        if (otpData.demoOtp) {
-                            app.showToast(`Demo OTP: ${otpData.demoOtp}`);
-                        }
+                        // Start cooldown timer (10 minutes)
+                        startOTPCooldown(600);
 
-                        // Hide seeker form and show OTP form
-                        document.getElementById('seekerForm').classList.add('hidden');
+                        app.showToast('✅ OTP sent to ' + email);
+                        document.getElementById('otpEmailDisplay').textContent = email;
+
+                        // Show OTP form
+                        document.getElementById('registerForm').classList.add('hidden');
                         document.getElementById('otpForm').classList.remove('hidden');
-                        
-                        // Clear OTP inputs
+
                         document.querySelectorAll('.otp-input').forEach(input => input.value = '');
                         document.querySelectorAll('.otp-input')[0].focus();
 
@@ -502,17 +729,93 @@
                 });
             }
 
-            // Handle OTP Form Submission for Seeker
+            const seekerForm = document.getElementById('seekerForm');
+            if (seekerForm) {
+                seekerForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+
+                    const name = document.getElementById('seekerName').value;
+                    const phone = document.getElementById('seekerPhone').value;
+                    const location = document.getElementById('seekerLocation').value;
+                    const bloodGroup = document.getElementById('seekerBloodGroup').value;
+                    const units = document.getElementById('seekerUnits').value;
+
+                    const seekerEmail = document.getElementById('seekerEmail') ? document.getElementById('seekerEmail').value.trim() : '';
+                    if (!seekerEmail || !seekerEmail.includes('@')) {
+                        app.showToast('Please enter a valid email address.');
+                        return;
+                    }
+
+                    try {
+                        app.showToast('Checking your details...');
+
+                        // ─ Duplicate check BEFORE sending OTP ─
+                        const dupCheck = await fetch(
+                            `http://localhost:3000/api/check-duplicate?email=${encodeURIComponent(seekerEmail)}&phone=${encodeURIComponent(phone)}`
+                        );
+                        const dupData = await dupCheck.json();
+
+                        if (dupData.emailExists) {
+                            app.showToast('❌ This email is already registered. Please sign in instead.');
+                            return;
+                        }
+                        if (dupData.phoneExists) {
+                            app.showToast('❌ This phone number is already registered. Please sign in instead.');
+                            return;
+                        }
+
+                        app.showToast('Sending OTP to your email...');
+
+                        // Store data for later use after OTP verification
+                        tempSeekerData = {
+                            name: name,
+                            phone: phone,
+                            email: seekerEmail,
+                            location: location,
+                            bloodGroup: bloodGroup,
+                            units: units
+                        };
+
+                        // Request OTP via Email
+                        const otpResponse = await fetch('http://localhost:3000/api/send-email-otp', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: seekerEmail })
+                        });
+
+                        const otpData = await otpResponse.json();
+
+                        if (!otpResponse.ok) {
+                            throw new Error(otpData.error || 'Failed to send OTP');
+                        }
+
+                        app.showToast('✅ OTP sent to ' + seekerEmail);
+                        document.getElementById('otpEmailDisplay').textContent = seekerEmail;
+
+                        document.getElementById('seekerForm').classList.add('hidden');
+                        document.getElementById('otpForm').classList.remove('hidden');
+
+                        document.querySelectorAll('.otp-input').forEach(input => input.value = '');
+                        document.querySelectorAll('.otp-input')[0].focus();
+
+                    } catch (err) {
+                        console.error('Error sending OTP:', err);
+                        app.showToast('Error: ' + err.message);
+                    }
+                });
+            }
+
+            // Handle OTP Form Submission for Both Donor and Seeker
             const otpForm = document.getElementById('otpForm');
             if (otpForm) {
                 otpForm.addEventListener('submit', async function (e) {
                     e.preventDefault();
-                    
+
                     try {
                         // Collect OTP from inputs
                         const otpInputs = document.querySelectorAll('.otp-input');
                         const otp = Array.from(otpInputs).map(input => input.value).join('');
-                        
+
                         if (otp.length !== 6) {
                             app.showToast('Please enter a 6-digit OTP');
                             return;
@@ -520,14 +823,26 @@
 
                         app.showToast('Verifying OTP...');
 
-                        // Verify OTP
-                        const verifyResponse = await fetch('http://localhost:3000/api/verify-sms-otp', {
+                        // Determine the email to verify against (login OR registration)
+                        let emailToVerify = null;
+                        if (isDonorRegistration && tempDonorData) {
+                            emailToVerify = tempDonorData.email;
+                        } else if (!isDonorRegistration && tempSeekerData) {
+                            emailToVerify = tempSeekerData.email;
+                        } else if (app.tempLoginUser) {
+                            emailToVerify = app.tempLoginUser.email;
+                        }
+
+                        if (!emailToVerify) {
+                            app.showToast('Session lost. Please refresh and try again.');
+                            return;
+                        }
+
+                        // Verify OTP via Email
+                        const verifyResponse = await fetch('http://localhost:3000/api/verify-email-otp', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                phone: tempSeekerData.phone, 
-                                otp: otp 
-                            })
+                            body: JSON.stringify({ email: emailToVerify, otp: otp })
                         });
 
                         const verifyData = await verifyResponse.json();
@@ -536,72 +851,114 @@
                             throw new Error(verifyData.error || 'OTP verification failed');
                         }
 
-                        // OTP verified successfully, now register and create request
-                        app.showToast('Processing your blood request...');
+                        if (isDonorRegistration && tempDonorData) {
+                            // ========== DONOR REGISTRATION ==========
+                            const donorUserData = {
+                                name: tempDonorData.name,
+                                phone: tempDonorData.phone,
+                                email: tempDonorData.email,
+                                role: 'donor',
+                                bloodType: tempDonorData.bloodType,
+                                city: tempDonorData.city,
+                                age: tempDonorData.age,
+                                gender: tempDonorData.gender,
+                                diseases: tempDonorData.diseases || '',
+                                lastDonationDate: tempDonorData.lastDonationDate || '',
+                                availability: 'available',
+                                medicalReportUrl: ''
+                            };
 
-                        // Create a unique user ID
-                        const userId = '_' + Math.random().toString(36).substr(2, 9);
-                        
-                        // Register user as a seeker in the backend
-                        const userData = {
-                            id: userId,
-                            name: tempSeekerData.name,
-                            phone: tempSeekerData.phone,
-                            role: 'seeker',
-                            bloodType: 'N/A',
-                            city: tempSeekerData.location,
-                            age: '',
-                            gender: '',
-                            diseases: '',
-                            lastDonationDate: '',
-                            availability: '',
-                            medicalReportUrl: ''
-                        };
+                            // Register donor
+                            const registerResponse = await fetch('http://localhost:3000/api/register', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(donorUserData)
+                            });
 
-                        const registerResponse = await fetch('http://localhost:3000/api/register', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(userData)
-                        });
+                            const registerData = await registerResponse.json();
 
-                        const registerData = await registerResponse.json();
+                            if (!registerResponse.ok) {
+                                throw new Error(registerData.error || 'Registration failed');
+                            }
+                            
+                            // Save user to localStorage with generated integer ID
+                            donorUserData.id = registerData.user_id;
+                            localStorage.setItem('bt_currentUser', JSON.stringify(donorUserData));
 
-                        if (!registerResponse.ok) {
-                            throw new Error(registerData.error || 'Registration failed');
+                            app.showToast('🎉 Welcome, Donor! Redirecting...');
+
+                        } else if (tempSeekerData) {
+                            // ========== SEEKER REGISTRATION ==========
+                            const seekerUserData = {
+                                name: tempSeekerData.name,
+                                phone: tempSeekerData.phone,
+                                email: tempSeekerData.email,
+                                role: 'seeker',
+                                bloodType: 'N/A',
+                                city: tempSeekerData.location,
+                                age: '',
+                                gender: '',
+                                diseases: '',
+                                lastDonationDate: '',
+                                availability: '',
+                                medicalReportUrl: ''
+                            };
+
+                            const registerResponse = await fetch('http://localhost:3000/api/register', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(seekerUserData)
+                            });
+
+                            const registerData = await registerResponse.json();
+
+                            if (!registerResponse.ok) {
+                                throw new Error(registerData.error || 'Registration failed');
+                            }
+                            
+                            const newId = registerData.user_id;
+                            seekerUserData.id = newId;
+
+                            // Create blood request
+                            const requestData = {
+                                seekerId: newId,
+                                bloodType: tempSeekerData.bloodGroup,
+                                quantity: parseInt(tempSeekerData.units),
+                                location: tempSeekerData.location,
+                                urgency: 'High'
+                            };
+
+                            const requestResponse = await fetch('http://localhost:3000/api/requests', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(requestData)
+                            });
+
+                            const requestDataResponse = await requestResponse.json();
+
+                            if (!requestResponse.ok) {
+                                throw new Error(requestDataResponse.error || 'Failed to create request');
+                            }
+
+                            // Save user to localStorage
+                            localStorage.setItem('bt_currentUser', JSON.stringify(seekerUserData));
+
+                            app.showToast('🩸 Blood request submitted! Redirecting...');
+                        } else if (app.tempLoginUser) {
+                            // ========== LOGIN FLOW ==========
+                            localStorage.setItem('bt_currentUser', JSON.stringify(app.tempLoginUser));
+                            app.showToast('✅ Login Successful! Redirecting...');
+                        } else {
+                            throw new Error('Session lost. Please refresh and try again.');
                         }
 
-                        // Create blood request
-                        const requestData = {
-                            id: '_' + Math.random().toString(36).substr(2, 9),
-                            seekerId: userId,
-                            bloodType: tempSeekerData.bloodGroup,
-                            quantity: parseInt(tempSeekerData.units),
-                            location: tempSeekerData.location,
-                            urgency: 'High'
-                        };
-
-                        const requestResponse = await fetch('http://localhost:3000/api/requests', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(requestData)
-                        });
-
-                        const requestDataResponse = await requestResponse.json();
-
-                        if (!requestResponse.ok) {
-                            throw new Error(requestDataResponse.error || 'Failed to create request');
-                        }
-
-                        // Save user to localStorage
-                        localStorage.setItem('bt_currentUser', JSON.stringify(userData));
-                        
-                        app.showToast('Blood request submitted successfully! Redirecting...');
-                        
-                        // Reset forms
+                        // Reset state
                         document.getElementById('otpForm').classList.add('hidden');
-                        document.getElementById('seekerForm').classList.remove('hidden');
-                        document.getElementById('seekerForm').reset();
-                        
+                        document.querySelectorAll('.otp-input').forEach(input => input.value = '');
+                        isDonorRegistration = false;
+                        tempDonorData = null;
+                        tempSeekerData = null;
+
                         // Redirect to dashboard
                         setTimeout(() => {
                             window.location.replace('dashboard.html');
@@ -705,35 +1062,53 @@
                 }
 
                 const locationValue = `${locationName}|${selectedLat},${selectedLng}`;
-                
+
                 // Check which form is visible and update accordingly
                 const regCityField = document.getElementById('regCity');
                 const seekerLocationField = document.getElementById('seekerLocation');
-                
+
                 if (regCityField && regCityField.offsetParent !== null) {
                     regCityField.value = locationValue;
                 } else if (seekerLocationField && seekerLocationField.offsetParent !== null) {
                     seekerLocationField.value = locationValue;
                 }
-                
+
                 closeLocationMap(true);
             } catch (err) {
                 const regCityField = document.getElementById('regCity');
                 const seekerLocationField = document.getElementById('seekerLocation');
                 const locationValue = `${selectedLat.toFixed(4)}, ${selectedLng.toFixed(4)}`;
-                
+
                 if (regCityField && regCityField.offsetParent !== null) {
                     regCityField.value = locationValue;
                 } else if (seekerLocationField && seekerLocationField.offsetParent !== null) {
                     seekerLocationField.value = locationValue;
                 }
-                
+
                 closeLocationMap(true);
+            }
+        }
+    </script>
+    <script>
+        function smoothScrollToCenter(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                const elementTop = element.offsetTop;
+                const elementHeight = element.offsetHeight;
+                const windowHeight = window.innerHeight;
+                const scrollTo = elementTop + (elementHeight - windowHeight) / 2;
+
+                window.scrollTo({
+                    top: Math.max(0, scrollTo),
+                    behavior: 'smooth'
+                });
             }
         }
     </script>
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- App JS -->
+    <script src="js/app.js"></script>
 </body>
 
 </html>

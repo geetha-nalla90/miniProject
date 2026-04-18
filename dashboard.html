@@ -50,13 +50,13 @@
                 <span>👤</span> Profile
             </div>
             <div class="nav-item" id="nav-new-request" onclick="switchView('new-request')">
-                <span>➕</span> New Request
-            </div>
-            <div class="nav-item" id="nav-my-requests" onclick="switchView('my-requests')">
-                <span>📋</span> My Requests
+                <span>➕</span> Create Request
             </div>
             <div class="nav-item" id="nav-available" onclick="switchView('available')">
-                <span>🩸</span> Available Requests
+                <span>🩸</span> New Requests
+            </div>
+            <div class="nav-item" id="nav-my-requests" onclick="switchView('my-requests')">
+                <span>📋</span> Request History
             </div>
             <div class="nav-item" id="nav-chats" onclick="switchView('chats')">
                 <span>💬</span> Active Chats <span id="chatBadge"
@@ -107,16 +107,12 @@
                                 <label style="color: var(--text-muted); font-size: 0.85rem;">Location</label>
                                 <p id="profileLocation" style="font-weight: 600; margin: 0.3rem 0 0 0; word-break: break-word;">-</p>
                             </div>
-                            <div>
-                                <label style="color: var(--text-muted); font-size: 0.85rem;">Role</label>
-                                <p id="profileRole" style="font-weight: 600; margin: 0.3rem 0 0 0;">-</p>
-                            </div>
                         </div>
                     </div>
 
-                    <!-- Donor Info Card (if applicable) -->
-                    <div id="donorInfoCard" class="glass-card hidden" style="padding: 1.5rem;">
-                        <h3 style="margin-bottom: 1rem; color: var(--primary-red);">Donor Info</h3>
+                    <!-- Health Info Card -->
+                    <div id="donorInfoCard" class="glass-card" style="padding: 1.5rem;">
+                        <h3 style="margin-bottom: 1rem; color: var(--primary-red);">Donation & Health Info</h3>
                         <div style="display: flex; flex-direction: column; gap: 0.8rem;">
                             <div>
                                 <label style="color: var(--text-muted); font-size: 0.85rem;">Last Donation Date</label>
@@ -143,7 +139,7 @@
                 </div>
             </div>
 
-            <!-- New Request View (Seekers Only) -->
+            <!-- New Request View -->
             <div id="view-new-request" class="glass-card hidden" style="padding: 2rem;">
                 <h2 style="margin-bottom: 1.5rem;">Create Blood Request</h2>
                 <form id="createRequestForm">
@@ -169,12 +165,33 @@
                         </div>
                     </div>
 
+                    <!-- Map-based Hospital Picker -->
                     <div class="form-group">
-                        <label>Authorized Hospital / Blood Bank</label>
-                        <select class="form-control" id="reqHospitalId" required>
-                            <!-- populated by JS -->
-                            <option value="">Loading Hospitals...</option>
-                        </select>
+                        <label style="display:flex; align-items:center; gap:0.4rem;">
+                            📍 Nearby Hospital / Blood Bank
+                            <span style="color:var(--primary-red)">*</span>
+                            <span style="font-size:0.78rem; color:var(--text-muted); font-weight:400;">(click a marker on the map to select)</span>
+                        </label>
+
+                        <!-- Leaflet map renders here -->
+                        <div id="locationPickerMap"
+                             style="height:300px; border-radius:10px; border:1px solid #d1d5db; background:#e5e7eb; overflow:hidden;">
+                        </div>
+
+                        <p id="locationPickerMsg"
+                           style="margin-top:0.5rem; font-size:0.82rem; color:var(--text-muted);">⏳ Detecting your location…</p>
+
+                        <!-- Shows after selection -->
+                        <div id="selectedLocationDisplay" class="hidden"
+                             style="margin-top:0.6rem; padding:0.6rem 0.9rem;
+                                    background:rgba(22,163,74,0.08); border:1px solid rgba(22,163,74,0.3);
+                                    border-radius:8px; font-size:0.88rem; display:flex; align-items:center; gap:0.5rem;">
+                            <span style="color:#16a34a;">✅ Selected:</span>
+                            <span id="selectedLocationName" style="font-weight:600;">—</span>
+                        </div>
+
+                        <!-- Hidden value sent to API -->
+                        <input type="hidden" id="reqSelectedLocation">
                     </div>
 
                     <div class="form-group">
@@ -210,15 +227,14 @@
                     </div>
 
                     <!-- Chat Window -->
-                    <div style="flex: 1; display: none; flex-direction: column; background: rgba(255,255,255,0.5); border-radius: 12px; overflow: hidden;"
+                    <div style="flex: 1; display: none; flex-direction: column; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #f3f4f6; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);"
                         id="activeChatWindow">
-                        <div class="chat-header" style="z-index: 10;">
-                            <div>
-                                <h3 id="chatPartnerName">Partner Name</h3>
-                                <p style="font-size: 0.8rem; color: var(--text-muted);" id="chatPartnerDetails">Phone:
-                                    Hidden</p>
+                        <div class="chat-header" style="z-index: 10; padding: 1.5rem; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center; background: #fff;">
+                            <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                                <h3 id="chatPartnerName" style="margin: 0; font-size: 1.1rem; color: #1f2937; font-weight: 600;">Partner Name</h3>
+                                <p style="margin: 0; font-size: 0.8rem; color: #6b7280;" id="chatPartnerDetails">Phone: Hidden</p>
                             </div>
-                            <span class="status-badge status-accepted" id="chatRequestStatus">Accepted</span>
+                            <span class="status-badge" id="chatRequestStatus" style="background: #dcfce7; color: #166534; border-radius: 999px; padding: 4px 12px; font-weight: bold; font-size: 0.75rem; text-transform: uppercase;">ACCEPTED</span>
                         </div>
 
                         <div style="display: flex; flex: 1; overflow: hidden; position: relative;" id="chatBodyWrapper">
@@ -234,21 +250,21 @@
                             </div>
 
                             <!-- Messages Area -->
-                            <div class="chat-messages" id="chatMessagesArea" style="flex: 1;">
+                            <div class="chat-messages" id="chatMessagesArea" style="flex: 1; padding: 1.5rem; background: #fafafa; overflow-y: auto;">
                                 <!-- Messages go here -->
                             </div>
                         </div>
 
-                        <form id="chatForm" class="chat-input">
+                        <form id="chatForm" class="chat-input" style="padding: 1rem 1.5rem; border-top: 1px solid #f3f4f6; background: #fff; display: flex; align-items: center; gap: 0.75rem;">
                             <input type="text" id="chatMessageInput" placeholder="Type a message..." required
-                                autocomplete="off">
-                            <button type="submit" class="btn btn-primary" style="padding: 0.75rem 1.5rem;">Send</button>
+                                autocomplete="off" style="flex: 1; padding: 0.75rem 1rem; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 0.95rem; outline: none; background: #fff;">
+                            <button type="submit" class="btn btn-primary" style="background: #dc2626; color: white; border-radius: 8px; padding: 0.75rem 1.5rem; font-weight: 600; border: none; cursor: pointer;">Send</button>
                         </form>
 
                         <div id="donorActions" class="hidden"
-                            style="padding: 0.5rem 1rem; border-top: 1px solid var(--glass-border); background: rgba(243, 244, 246, 0.8); text-align: right;">
+                            style="padding: 0.5rem 1.5rem 1.5rem; background: #fff; text-align: right;">
                             <button type="button" class="btn btn-primary"
-                                style="background:#16a34a; font-size: 0.85rem;"
+                                style="background:#16a34a; font-size: 0.9rem; padding: 0.6rem 1.5rem; border-radius: 8px; color: white; border: none; cursor: pointer;"
                                 onclick="app.completeDonation(event)">Mark Donation Completed</button>
                         </div>
                     </div>
@@ -332,6 +348,23 @@
     <!-- Toast -->
     <div id="toast" class="toast">Action successful!</div>
 
+    <!-- Location View Modal (mini-map for request cards) -->
+    <div id="locationViewModal" class="modal-overlay hidden"
+         onclick="if(event.target.id==='locationViewModal'){this.classList.add('hidden');this.style.display='none';if(app._locViewMap){app._locViewMap.remove();app._locViewMap=null;}}">
+        <div style="background:rgba(255,255,255,0.97); backdrop-filter:blur(12px); border-radius:16px;
+                    padding:1.25rem; max-width:560px; width:92%; box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                <h4 id="locationViewTitle" style="font-size:1rem; color:var(--text-main);">Hospital Location</h4>
+                <button onclick="const m=document.getElementById('locationViewModal');m.classList.add('hidden');m.style.display='none';if(app._locViewMap){app._locViewMap.remove();app._locViewMap=null;}"
+                        style="border:none;background:none;font-size:1.4rem;cursor:pointer;color:var(--text-muted);line-height:1;">&times;</button>
+            </div>
+            <div id="locationViewMap" style="height:340px; border-radius:10px; overflow:hidden;"></div>
+            <p style="font-size:0.78rem; color:var(--text-muted); margin-top:0.5rem; text-align:center;">
+                Map data © OpenStreetMap contributors
+            </p>
+        </div>
+    </div>
+
     <!-- Leaflet Map & Routing JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
@@ -360,14 +393,16 @@
                 app.loadProfileView();
             } else if (viewName === 'new-request') {
                 targetView = 'view-new-request';
+                // Init map picker after the view is visible
+                setTimeout(() => app.initLocationMapPicker(), 50);
             } else if (viewName === 'my-requests') {
                 targetView = 'view-list';
-                document.getElementById('listTitle').innerText = 'My Blood Requests';
+                document.getElementById('listTitle').innerText = 'Request History';
                 app.renderSeekerRequests();
             } else if (viewName === 'available') {
                 targetView = 'view-list';
-                document.getElementById('listTitle').innerText = 'Available Blood Requests';
-                app.renderDonorMatches();
+                document.getElementById('listTitle').innerText = 'New Requests';
+                app.renderNewRequests();
             } else if (viewName === 'chats') {
                 app.renderChatList();
             }
@@ -413,9 +448,6 @@
 
             document.getElementById('userGreeting').innerText = `Hello, ${user.name}`;
 
-            // Load hospitals for new request form
-            app.loadHospitals();
-
             // Handle edit profile form submission
             const editProfileForm = document.getElementById('editProfileForm');
             if (editProfileForm) {
@@ -446,8 +478,7 @@
             }
             document.getElementById('profileLocation').innerText = locationDisplay;
 
-            // Show user role
-            document.getElementById('profileRole').innerText = user.role === 'donor' ? 'Donor' : 'Seeker';
+            // (Role display removed for unified dashboard)
 
             // Always show health status
             const donorCard = document.getElementById('donorInfoCard');

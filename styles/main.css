@@ -666,3 +666,212 @@ nav {
     font-size: 0.8rem;
     color: var(--text-muted);
 }
+
+/* ── Extended Status Badges ─────────────────────────────────────────────────── */
+.status-checking {
+    background: #fef9c3;
+    color: #854d0e;
+    animation: pulse-badge 1.5s ease-in-out infinite;
+}
+
+.status-bank-available {
+    background: #dcfce7;
+    color: #14532d;
+}
+
+.status-bank-partial {
+    background: #fef3c7;
+    color: #92400e;
+    animation: pulse-badge 2s ease-in-out infinite;
+}
+
+.status-donor-needed {
+    background: #fee2e2;
+    color: #991b1b;
+    animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.65; }
+}
+
+/* ── Blood Bank Result Panel ─────────────────────────────────────────────────── */
+.blood-bank-panel {
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+    margin-top: 0.75rem;
+    font-size: 0.88rem;
+}
+
+.blood-bank-panel .bb-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.92rem;
+    margin-bottom: 0.5rem;
+}
+
+.blood-bank-available {
+    background: linear-gradient(135deg, rgba(22, 163, 74, 0.08), rgba(22, 163, 74, 0.15));
+    border: 1px solid rgba(22, 163, 74, 0.3);
+}
+
+.blood-bank-partial {
+    background: linear-gradient(135deg, rgba(217, 119, 6, 0.08), rgba(245, 158, 11, 0.15));
+    border: 1px solid rgba(217, 119, 6, 0.35);
+}
+
+.blood-bank-unavailable {
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.06), rgba(220, 38, 38, 0.12));
+    border: 1px solid rgba(220, 38, 38, 0.25);
+}
+
+.blood-bank-checking {
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.08), rgba(234, 179, 8, 0.15));
+    border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.bb-bank-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.bb-bank-row:last-of-type {
+    border-bottom: none;
+}
+
+.bb-bank-name {
+    font-weight: 600;
+    color: var(--text-main);
+    flex: 1;
+}
+
+.bb-distance {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.bb-units {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #16a34a;
+    background: rgba(22, 163, 74, 0.1);
+    padding: 2px 7px;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+.bb-note {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+    line-height: 1.5;
+}
+
+/* Animated progress bar for blood bank checking state */
+.bb-progress-bar {
+    height: 4px;
+    background: rgba(234, 179, 8, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.bb-progress-fill {
+    height: 100%;
+    width: 40%;
+    background: linear-gradient(90deg, #eab308, #f59e0b);
+    border-radius: 4px;
+    animation: progress-sweep 1.6s ease-in-out infinite;
+}
+
+@keyframes progress-sweep {
+    0%   { transform: translateX(-150%); }
+    100% { transform: translateX(400%); }
+}
+
+/* Spinning emoji */
+.bb-spinner {
+    display: inline-block;
+    animation: spin-slow 2s linear infinite;
+}
+
+@keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* ── Cancel Acceptance Button ─────────────────────────────────────────────── */
+.btn-cancel {
+    background: transparent;
+    border: 2px solid #dc2626;
+    color: #dc2626;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-size: 0.88rem;
+}
+
+.btn-cancel:hover {
+    background: #dc2626;
+    color: white;
+}
+
+.btn-cancel:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ── Cancelled Status Badge ─────────────────────────────────────────────────── */
+.status-cancelled {
+    background: #f3f4f6;
+    color: #6b7280;
+    text-decoration: line-through;
+}
+
+/* ── Inline Cancel Request Button (top-right of card) ───────────────────────── */
+.btn-card-cancel {
+    background: transparent;
+    border: 1.5px solid #dc2626;
+    color: #dc2626;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+
+.btn-card-cancel:hover {
+    background: #dc2626;
+    color: white;
+}
+
+.btn-card-cancel:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ── Location Picker Map (New Request form) ─────────────────────────────────── */
+#locationPickerMap {
+    /* Leaflet needs explicit height — set in inline style; this enforces min */
+    min-height: 280px;
+    z-index: 1;
+}
+
+/* Ensure the location view modal map renders above other content */
+#locationViewMap {
+    min-height: 300px;
+    z-index: 1;
+}
+
