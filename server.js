@@ -258,14 +258,22 @@ async function checkNearbyBloodBanks(locationStr, bloodType, quantity) {
             lon = parseFloat(c[1]);
         }
 
-        const radius = 10000; // 10 km
+        const radius = 20000; // 20 km
         const query = `
             [out:json][timeout:15];
             (
-              node["amenity"="hospital"](around:${radius},${lat},${lon});
               node["healthcare"="blood_bank"](around:${radius},${lat},${lon});
-              way["amenity"="hospital"](around:${radius},${lat},${lon});
+              node["amenity"="blood_bank"](around:${radius},${lat},${lon});
+              node["healthcare"="blood_donation"](around:${radius},${lat},${lon});
+              node["amenity"="blood_donation_center"](around:${radius},${lat},${lon});
               way["healthcare"="blood_bank"](around:${radius},${lat},${lon});
+              way["amenity"="blood_bank"](around:${radius},${lat},${lon});
+              way["healthcare"="blood_donation"](around:${radius},${lat},${lon});
+              way["amenity"="blood_donation_center"](around:${radius},${lat},${lon});
+              node["amenity"="hospital"](around:${radius},${lat},${lon});
+              node["amenity"="clinic"](around:${radius},${lat},${lon});
+              way["amenity"="hospital"](around:${radius},${lat},${lon});
+              way["amenity"="clinic"](around:${radius},${lat},${lon});
             );
             out center;
         `;
@@ -306,7 +314,7 @@ async function checkNearbyBloodBanks(locationStr, bloodType, quantity) {
         const elements = (data.elements || []).filter(el => el.tags && el.tags.name);
 
         // Build list of named facilities with simulated availability
-        const banks = elements.slice(0, 8).map(el => {
+        const banks = elements.map(el => {
             const elLat = el.center ? el.center.lat : el.lat;
             const elLon = el.center ? el.center.lon : el.lon;
             const dist = (elLat && elLon) ? haversineDistance(lat, lon, elLat, elLon) : null;
@@ -316,9 +324,23 @@ async function checkNearbyBloodBanks(locationStr, bloodType, quantity) {
             const availableUnits = isAvailable ? Math.ceil(Math.random() * quantity) : 0;
             const phone = el.tags.phone || '+91 ' + Math.floor(8000000000 + Math.random() * 1000000000);
 
+            // Determine facility type for sorting priority
+            const amenity = el.tags.amenity || '';
+            const healthcare = el.tags.healthcare || '';
+            let typeCategory = 'hospital';
+            
+            if (amenity.includes('blood_bank') || healthcare.includes('blood_bank')) {
+                typeCategory = 'blood_bank';
+            } else if (amenity.includes('blood_donation') || healthcare.includes('blood_donation')) {
+                typeCategory = 'blood_donation';
+            } else if (amenity === 'clinic') {
+                typeCategory = 'clinic';
+            }
+
             return {
                 name: el.tags.name,
-                type: el.tags['healthcare'] === 'blood_bank' ? 'Blood Bank' : 'Hospital',
+                type: healthcare === 'blood_bank' || amenity.includes('blood_bank') ? 'Blood Bank' : (healthcare === 'blood_donation' || amenity.includes('blood_donation') ? 'Blood Donation Center' : 'Hospital'),
+                typeCategory: typeCategory,
                 contact: phone,
                 distanceKm: dist ? dist.toFixed(1) : 'N/A',
                 available: isAvailable,
@@ -327,14 +349,24 @@ async function checkNearbyBloodBanks(locationStr, bloodType, quantity) {
             };
         });
 
-        // If no banks found, generate 2 simulated nearby banks
-        if (banks.length === 0) {
-            console.log('⚠️  [BloodBank] No real banks from Overpass; using simulated fallback.');
-            ['City Central Blood Bank', 'Regional Medical Centre'].forEach((name, i) => {
+        // Sort to prioritize blood banks first
+        const priority = { 'blood_bank': 0, 'blood_donation': 1, 'clinic': 2, 'hospital': 3 };
+        banks.sort((a, b) => (priority[a.typeCategory] || 99) - (priority[b.typeCategory] || 99));
+        
+        // Filter to ONLY blood banks and blood donation centers (not hospitals/clinics)
+        let bloodBanksOnly = banks.filter(b => b.typeCategory === 'blood_bank' || b.typeCategory === 'blood_donation');
+        
+        // If no dedicated blood banks found, fall back to all facilities
+        let selectedBanks = bloodBanksOnly.length > 0 ? bloodBanksOnly.slice(0, 8) : banks.slice(0, 8);
+
+        // If no banks found, generate 2 simulated nearby blood banks
+        if (selectedBanks.length === 0) {
+            ['City Central Blood Bank', 'Regional Blood Donation Center'].forEach((name, i) => {
                 const isAvailable = Math.random() < 0.50;
-                banks.push({
+                selectedBanks.push({
                     name,
-                    type: i === 0 ? 'Blood Bank' : 'Hospital',
+                    type: i === 0 ? 'Blood Bank' : 'Blood Donation Center',
+                    typeCategory: i === 0 ? 'blood_bank' : 'blood_donation',
                     distanceKm: (Math.random() * 8 + 1).toFixed(1),
                     contact: '+91 ' + Math.floor(8000000000 + Math.random() * 1000000000),
                     available: isAvailable,
@@ -344,11 +376,9 @@ async function checkNearbyBloodBanks(locationStr, bloodType, quantity) {
             });
         }
 
-        const availableBanks = banks.filter(b => b.available && b.units > 0);
+        const availableBanks = selectedBanks.filter(b => b.available && b.units > 0);
         const hasAvailability = availableBanks.length > 0;
-
-        console.log(`✅ [BloodBank] Found ${banks.length} banks. Available: ${hasAvailability}`);
-        return { available: hasAvailability, banks };
+        return { available: hasAvailability, banks: selectedBanks };
 
     } catch (err) {
         console.error(`❌ [BloodBank] Overpass error: ${err.message}`);
@@ -585,13 +615,19 @@ app.get('/api/donors', (req, res) => {
  * Falls back to 2 simulated entries on timeout / error.
  */
 async function fetchNearbyBanksFromOverpass(lat, lon, radiusM = 10000) {
+    // Query blood banks and donation centers FIRST, hospitals only as fallback
     const query = `
         [out:json][timeout:8];
         (
-          node["amenity"="hospital"](around:${radiusM},${lat},${lon});
           node["healthcare"="blood_bank"](around:${radiusM},${lat},${lon});
-          way["amenity"="hospital"](around:${radiusM},${lat},${lon});
+          node["amenity"="blood_bank"](around:${radiusM},${lat},${lon});
+          node["healthcare"="blood_donation"](around:${radiusM},${lat},${lon});
+          node["amenity"="blood_donation_center"](around:${radiusM},${lat},${lon});
           way["healthcare"="blood_bank"](around:${radiusM},${lat},${lon});
+          way["amenity"="blood_bank"](around:${radiusM},${lat},${lon});
+          way["healthcare"="blood_donation"](around:${radiusM},${lat},${lon});
+          node["amenity"="hospital"](around:${radiusM},${lat},${lon});
+          way["amenity"="hospital"](around:${radiusM},${lat},${lon});
         );
         out center;
     `;
@@ -621,44 +657,55 @@ async function fetchNearbyBanksFromOverpass(lat, lon, radiusM = 10000) {
             req.end();
         });
 
-        const banks = (data.elements || [])
+        const allFacilities = (data.elements || [])
             .filter(el => el.tags && el.tags.name)
             .map(el => {
                 const eLat = el.center ? el.center.lat : el.lat;
                 const eLon = el.center ? el.center.lon : el.lon;
                 const dist = (eLat && eLon) ? haversineDistance(lat, lon, eLat, eLon) : null;
+                const amenity   = el.tags.amenity   || '';
+                const healthcare = el.tags.healthcare || '';
+                const isBloodBank = healthcare === 'blood_bank' || amenity === 'blood_bank'
+                                 || healthcare === 'blood_donation' || amenity === 'blood_donation_center';
                 return {
-                    name:       el.tags.name,
-                    type:       el.tags['healthcare'] === 'blood_bank' ? 'Blood Bank' : 'Hospital',
-                    lat:        eLat,
-                    lon:        eLon,
-                    distanceKm: dist ? dist.toFixed(1) : 'N/A',
-                    contact:    el.tags.phone || el.tags['contact:phone'] ||
-                                '+91 ' + Math.floor(8000000000 + Math.random() * 1000000000)
+                    name:        el.tags.name,
+                    type:        isBloodBank ? 'Blood Bank' : 'Hospital',
+                    isBloodBank,
+                    lat:         eLat,
+                    lon:         eLon,
+                    distanceKm:  dist ? dist.toFixed(1) : 'N/A',
+                    contact:     el.tags.phone || el.tags['contact:phone'] ||
+                                 '+91 ' + Math.floor(8000000000 + Math.random() * 1000000000)
                 };
             })
             .filter(b => b.lat && b.lon);
 
-        if (banks.length > 0) {
-            console.log(`🏥 [Overpass] Found ${banks.length} facilities within ${radiusM / 1000} km.`);
-            return banks;
+        // Prefer dedicated blood banks; only fall back to hospitals if none found
+        const bloodBanks = allFacilities.filter(b => b.isBloodBank);
+        const selected   = bloodBanks.length > 0 ? bloodBanks : allFacilities;
+
+        if (selected.length > 0) {
+            console.log(`🏥 [Overpass] Found ${bloodBanks.length} blood banks, ${allFacilities.length - bloodBanks.length} hospitals within ${radiusM / 1000} km.`);
+            return selected;
         }
     } catch (err) {
         console.warn(`⚠️  [Overpass] ${err.message} — using simulated fallback banks.`);
     }
 
-    // Fallback: return 2 simulated banks
+    // Fallback: return 2 simulated blood banks (never hospitals)
     return [
         {
             name: 'City Central Blood Bank',
             type: 'Blood Bank',
+            isBloodBank: true,
             lat: lat + 0.04, lon: lon + 0.03,
             distanceKm: (2 + Math.random() * 4).toFixed(1),
             contact: '+91 ' + Math.floor(8000000000 + Math.random() * 1000000000)
         },
         {
-            name: 'Regional Medical Centre',
-            type: 'Hospital',
+            name: 'Regional Blood Donation Centre',
+            type: 'Blood Bank',
+            isBloodBank: true,
             lat: lat - 0.03, lon: lon - 0.02,
             distanceKm: (1 + Math.random() * 3).toFixed(1),
             contact: '+91 ' + Math.floor(8000000000 + Math.random() * 1000000000)
@@ -671,28 +718,22 @@ async function fetchNearbyBanksFromOverpass(lat, lon, radiusM = 10000) {
  * Returns: { mode: 'available'|'partial'|'unavailable', ... }
  */
 function decideAvailability(banks, requestedQty, bloodType) {
-    const bank = banks[Math.floor(Math.random() * banks.length)];
+    // Prefer a blood bank over a hospital for the selected facility
+    const bloodBanks = banks.filter(b => b.isBloodBank);
+    const pool = bloodBanks.length > 0 ? bloodBanks : banks;
+    const bank = pool[Math.floor(Math.random() * pool.length)];
     const roll = Math.random();
 
-    if (roll < 0.40) {
-        // AVAILABLE — full units
-        return {
-            mode:           'available',
-            bank,
-            requestedUnits: requestedQty,
-            availableUnits: requestedQty
-        };
-    } else if (roll < 0.70) {
-        // PARTIAL — some units
-        const partial = Math.max(1, Math.floor(requestedQty * (0.3 + Math.random() * 0.6)));
-        return {
-            mode:           'partial',
-            bank,
-            requestedUnits: requestedQty,
-            availableUnits: partial
-        };
-    } else {
-        // NOT AVAILABLE
+    if (requestedQty <= 1) {
+        // Single unit requests can only be available or unavailable.
+        if (roll < 0.10) {
+            return {
+                mode:           'available',
+                bank,
+                requestedUnits: requestedQty,
+                availableUnits: requestedQty
+            };
+        }
         return {
             mode:           'unavailable',
             bank,
@@ -700,6 +741,36 @@ function decideAvailability(banks, requestedQty, bloodType) {
             availableUnits: 0
         };
     }
+
+    if (roll < 0.10) {
+        // AVAILABLE — full units
+        return {
+            mode:           'available',
+            bank,
+            requestedUnits: requestedQty,
+            availableUnits: requestedQty
+        };
+    } else if (roll < 0.50) {
+        // PARTIAL — strictly fewer units than requested
+        const partial = Math.max(1, Math.min(
+            requestedQty - 1,
+            Math.floor(requestedQty * (0.3 + Math.random() * 0.5))
+        ));
+        return {
+            mode:           'partial',
+            bank,
+            requestedUnits: requestedQty,
+            availableUnits: partial
+        };
+    }
+
+    // NOT AVAILABLE
+    return {
+        mode:           'unavailable',
+        bank,
+        requestedUnits: requestedQty,
+        availableUnits: 0
+    };
 }
 
 // Tracks auto-complete timers so manual completion can cancel them
@@ -763,16 +834,16 @@ app.post('/api/requests', (req, res) => {
                     reqLon = parseFloat(c[1]) || reqLon;
                 }
 
-                console.log(`🔍 [Request ${reqId}] Starting Overpass search at ${reqLat},${reqLon} (10 km radius)...`);
+                // Blood bank search in progress
 
-                // Fetch real banks from Overpass (10 km)
-                const banks = await fetchNearbyBanksFromOverpass(reqLat, reqLon, 10000);
+                // Fetch real banks from Overpass (20 km)
+                const banks = await fetchNearbyBanksFromOverpass(reqLat, reqLon, 20000);
 
                 // Decide availability (controlled random)
                 const decision = decideAvailability(banks, qty, blood_group);
                 const { mode, bank, requestedUnits, availableUnits } = decision;
 
-                console.log(`🎲 [Request ${reqId}] Roll: ${mode.toUpperCase()} | Bank: ${bank.name} | Req: ${requestedUnits} | Avail: ${availableUnits}`);
+                // Availability determined (silent)
 
                 let finalStatus, bankResultPayload;
 
@@ -822,13 +893,18 @@ app.post('/api/requests', (req, res) => {
                     `UPDATE blood_requests
                      SET status = ?, bloodBankResult = ?, availableUnits = ?, donorNotified = ?
                      WHERE id = ?`,
-                    [finalStatus, bankResultPayload, availableUnits, mode === 'unavailable' ? 1 : 0, reqId],
+                    [finalStatus, bankResultPayload, availableUnits, (mode === 'unavailable' || mode === 'partial') ? 1 : 0, reqId],
                     function (updateErr) {
                         if (updateErr) {
                             console.error(`❌ [Request ${reqId}] DB update failed: ${updateErr.message}`);
                             return;
                         }
                         io.emit('request_updated', reqId);
+
+                        // Emit new_request event for unavailable or partial cases to notify donors
+                        if (mode === 'unavailable' || mode === 'partial') {
+                            io.emit('new_request');
+                        }
 
                         // ── Phase 4: 60-second auto-complete for AVAILABLE / PARTIAL ──
                         if (mode === 'available' || mode === 'partial') {
@@ -840,7 +916,6 @@ app.post('/api/requests', (req, res) => {
                                     [reqId],
                                     function (tErr) {
                                         if (!tErr && this.changes > 0) {
-                                            console.log(`✅ [Request ${reqId}] Auto-completed after 60 s (${mode}).`);
                                             io.emit('request_updated', reqId);
                                         }
                                     }
@@ -849,8 +924,8 @@ app.post('/api/requests', (req, res) => {
                             autoCompleteTimers.set(reqId, timer);
                         }
 
-                        // ── Phase 5: SMS donors if NOT AVAILABLE ──────────────────────
-                        if (mode === 'unavailable') {
+                        // ── Phase 5: SMS donors if NOT AVAILABLE or PARTIAL ──────────────────────
+                        if (mode === 'unavailable' || mode === 'partial') {
                             const compatibleTypes = BLOOD_COMPATIBILITY[blood_group] || [blood_group];
                             const placeholders    = compatibleTypes.map(() => '?').join(',');
 
@@ -863,10 +938,9 @@ app.post('/api/requests', (req, res) => {
                                 [...compatibleTypes, Number(user_id)],
                                 async (errDb, donors) => {
                                     if (errDb || !donors || donors.length === 0) {
-                                        console.log(`ℹ️  [Request ${reqId}] No eligible donors found for SMS.`);
+                                        // No donors available for SMS
                                         return;
                                     }
-                                    console.log(`📱 [Request ${reqId}] Sending SMS to ${donors.length} eligible donor(s)...`);
                                     for (const donor of donors) {
                                         if (donor.lat && donor.lng) {
                                             const dist = haversineDistance(reqLat, reqLon, donor.lat, donor.lng);
@@ -875,6 +949,17 @@ app.post('/api/requests', (req, res) => {
                                         if (donor.phone) {
                                             const smsMsg = `Urgent: Blood request needed for ${blood_group} near your location. Please accept in the app.`;
                                             await sendSMS(donor.phone, smsMsg);
+                                            
+                                            // Insert into request_recipients so donor can see the request
+                                            db.run(
+                                                `INSERT OR IGNORE INTO request_recipients (request_id, receiver_id) VALUES (?, ?)`,
+                                                [reqId, donor.id],
+                                                (insertErr) => {
+                                                    if (insertErr) {
+                                                        console.error(`❌ [Request ${reqId}] Failed to add recipient ${donor.id}: ${insertErr.message}`);
+                                                    }
+                                                }
+                                            );
                                         }
                                     }
                                 }
@@ -910,22 +995,35 @@ app.get('/api/requests', (req, res) => {
 app.get('/api/requests/new', (req, res) => {
     const userId = req.query.userId || req.user_id; // Frontend may pass it in query
     if (!userId) return res.status(400).json({ error: 'userId required' });
-    db.all(
-        `SELECT r.id, r.user_id as seekerId, r.blood_group as bloodType, r.quantity, 
-                r.location, r.urgency, r.status, r.created_at as timestamp, r.donorId, r.target_user_id,
-                u1.name  AS seekerName,  u1.phone AS seekerPhone,
-                u2.name  AS donorName,   u2.phone AS donorPhone
-         FROM blood_requests r
-         LEFT JOIN users u1 ON r.user_id = u1.id
-         LEFT JOIN users u2 ON r.donorId  = u2.id
-         WHERE r.target_user_id = ? AND r.status = 'pending'
-         ORDER BY r.created_at DESC`,
-        [userId],
-        (err, rows) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json(rows);
-        }
-    );
+
+    // First get the donor's blood type
+    db.get(`SELECT blood_group FROM users WHERE id = ?`, [userId], (err, donor) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!donor) return res.status(404).json({ error: 'Donor not found' });
+
+        const donorBloodType = donor.blood_group;
+        // Get compatible blood types for this donor
+        const compatibleTypes = BLOOD_COMPATIBILITY[donorBloodType] || [donorBloodType];
+
+        db.all(
+            `SELECT r.id, r.user_id as seekerId, r.blood_group as bloodType, r.quantity,
+                    r.location, r.urgency, r.status, r.created_at as timestamp, r.donorId, r.target_user_id,
+                    u1.name  AS seekerName,  u1.phone AS seekerPhone,
+                    u2.name  AS donorName,   u2.phone AS donorPhone
+             FROM blood_requests r
+             LEFT JOIN users u1 ON r.user_id = u1.id
+             LEFT JOIN users u2 ON r.donorId  = u2.id
+             WHERE (r.target_user_id = ? AND r.status = 'pending')
+                OR (r.id IN (SELECT request_id FROM request_recipients WHERE receiver_id = ?) AND r.status IN ('DonorNeeded', 'BloodBankPartial'))
+                OR (r.status = 'Open' AND r.blood_group IN (${compatibleTypes.map(() => '?').join(',')}))
+             ORDER BY r.created_at DESC`,
+            [userId, userId, ...compatibleTypes],
+            (err, rows) => {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json(rows);
+            }
+        );
+    });
 });
 
 /**
@@ -948,10 +1046,15 @@ app.post('/api/requests/:id/accept', (req, res) => {
     const reqId = req.params.id;
     db.run(
         `UPDATE blood_requests SET status = 'Accepted', donorId = ?
-         WHERE id = ? AND (status = 'Open' OR status = 'DonorNeeded')`,
+         WHERE id = ? AND (status = 'Open' OR status = 'DonorNeeded' OR status = 'BloodBankPartial')`,
         [donorId, reqId],
         function (err) {
             if (err || this.changes === 0) return res.status(400).json({ error: 'Request already accepted or not available.' });
+            // Cancel auto-complete timer if running
+            if (autoCompleteTimers.has(Number(reqId))) {
+                clearTimeout(autoCompleteTimers.get(Number(reqId)));
+                autoCompleteTimers.delete(Number(reqId));
+            }
             io.emit('request_updated', reqId);
             console.log(`✅ [Request ${reqId}] Accepted by donor ${donorId}.`);
             res.json({ success: true });
@@ -1031,16 +1134,104 @@ app.post('/api/requests/:id/complete-bank', (req, res) => {
         clearTimeout(autoCompleteTimers.get(Number(reqId)));
         autoCompleteTimers.delete(Number(reqId));
     }
-    db.run(
-        `UPDATE blood_requests SET status = 'Completed'
-         WHERE id = ? AND status IN ('BloodBankAvailable','BloodBankPartial')`,
-        [reqId],
-        function (err) {
-            if (err) return res.status(500).json({ error: err.message });
-            io.emit('request_updated', reqId);
-            res.json({ success: true });
+
+    // First, get the request details to check if it's partial
+    db.get(`SELECT * FROM blood_requests WHERE id = ?`, [reqId], (err, request) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!request) return res.status(404).json({ error: 'Request not found' });
+
+        // Check if this is a partial request that needs remaining units handled
+        if (request.status === 'BloodBankPartial' && request.bloodBankResult) {
+            try {
+                const banks = JSON.parse(request.bloodBankResult);
+                if (banks.length > 0 && banks[0].availableUnits < request.quantity) {
+                    // Calculate remaining units
+                    const remainingUnits = request.quantity - banks[0].availableUnits;
+
+                    // Create a new request for remaining units - skip blood bank checking, send directly to donors
+                    db.run(
+                        `INSERT INTO blood_requests
+                         (user_id, blood_group, quantity, location, urgency, message, status, created_at, donorNotified)
+                         VALUES (?, ?, ?, ?, ?, ?, 'DonorNeeded', ?, 1)`,
+                        [
+                            request.user_id,
+                            request.blood_group,
+                            remainingUnits,
+                            request.location,
+                            request.urgency,
+                            `Remaining ${remainingUnits} unit(s) from original request (ID: ${reqId}) - Blood bank unavailable, seeking donor help`,
+                            new Date().toISOString()
+                        ],
+                        function (insertErr) {
+                            if (insertErr) {
+                                console.error('Error creating remaining units request:', insertErr);
+                                return;
+                            }
+
+                            const remainingRequestId = this.lastID;
+                            console.log(`✅ Created new request for ${remainingUnits} remaining unit(s) from request ${reqId} - sent directly to donors`);
+
+                            const compatibleTypes = BLOOD_COMPATIBILITY[request.blood_group] || [request.blood_group];
+                            const placeholders = compatibleTypes.map(() => '?').join(',');
+
+                            db.all(
+                                `SELECT u.id, u.phone, u.lat, u.lng, u.name
+                                 FROM users u
+                                 WHERE u.blood_group IN (${placeholders})
+                                   AND u.availability != 'No'
+                                   AND u.id != ?`,
+                                [...compatibleTypes, Number(request.user_id)],
+                                async (errDb, donors) => {
+                                    if (errDb || !donors || donors.length === 0) {
+                                        io.emit('new_request');
+                                        return;
+                                    }
+
+                                    for (const donor of donors) {
+                                        if (donor.lat && donor.lng && request.lat && request.lng) {
+                                            const dist = haversineDistance(request.lat, request.lng, donor.lat, donor.lng);
+                                            if (dist > 20) continue;
+                                        }
+
+                                        db.run(
+                                            `INSERT OR IGNORE INTO request_recipients (request_id, receiver_id) VALUES (?, ?)`,
+                                            [remainingRequestId, donor.id],
+                                            (insertErr2) => {
+                                                if (insertErr2) {
+                                                    console.error(`❌ [Request ${remainingRequestId}] Failed to add recipient ${donor.id}: ${insertErr2.message}`);
+                                                }
+                                            }
+                                        );
+
+                                        if (donor.phone) {
+                                            const smsMsg = `Urgent: Blood request needed for ${request.blood_group} near your location. Please accept in the app.`;
+                                            await sendSMS(donor.phone, smsMsg);
+                                        }
+                                    }
+
+                                    io.emit('new_request');
+                                }
+                            );
+                        }
+                    );
+                }
+            } catch (parseErr) {
+                console.error('Error parsing blood bank result:', parseErr);
+            }
         }
-    );
+
+        // Mark current request as completed
+        db.run(
+            `UPDATE blood_requests SET status = 'Completed'
+             WHERE id = ? AND status IN ('BloodBankAvailable','BloodBankPartial')`,
+            [reqId],
+            function (updateErr) {
+                if (updateErr) return res.status(500).json({ error: updateErr.message });
+                io.emit('request_updated', reqId);
+                res.json({ success: true });
+            }
+        );
+    });
 });
 
 app.post('/api/requests/:id/complete', (req, res) => {

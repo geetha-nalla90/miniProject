@@ -53,14 +53,21 @@ window.app = {
         navigator.geolocation.getCurrentPosition(async (pos) => {
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
-            const radius = 5000; // 5km radius
+            const radius = 20000; // 20km radius
 
             const query = `
                 [out:json];
                 (
+                  node["healthcare"="blood_bank"](around:${radius},${lat},${lon});
+                  node["amenity"="blood_bank"](around:${radius},${lat},${lon});
+                  node["healthcare"="blood_donation"](around:${radius},${lat},${lon});
+                  node["amenity"="blood_donation_center"](around:${radius},${lat},${lon});
+                  way["healthcare"="blood_bank"](around:${radius},${lat},${lon});
+                  way["amenity"="blood_bank"](around:${radius},${lat},${lon});
+                  way["healthcare"="blood_donation"](around:${radius},${lat},${lon});
+                  way["amenity"="blood_donation_center"](around:${radius},${lat},${lon});
                   node["amenity"="hospital"](around:${radius},${lat},${lon});
                   node["amenity"="clinic"](around:${radius},${lat},${lon});
-                  node["healthcare"="blood_bank"](around:${radius},${lat},${lon});
                   way["amenity"="hospital"](around:${radius},${lat},${lon});
                   way["amenity"="clinic"](around:${radius},${lat},${lon});
                 );
@@ -87,17 +94,37 @@ window.app = {
                     const elLat = el.center ? el.center.lat : el.lat;
                     const elLon = el.center ? el.center.lon : el.lon;
 
+                    // Determine facility type for sorting priority
+                    const amenity = el.tags.amenity || '';
+                    const healthcare = el.tags.healthcare || '';
+                    let typeCategory = 'hospital';
+                    
+                    if (amenity.includes('blood_bank') || healthcare.includes('blood_bank')) {
+                        typeCategory = 'blood_bank';
+                    } else if (amenity.includes('blood_donation') || healthcare.includes('blood_donation')) {
+                        typeCategory = 'blood_donation';
+                    } else if (amenity === 'clinic') {
+                        typeCategory = 'clinic';
+                    }
+
                     return {
                         name: el.tags.name,
                         type: el.tags.amenity || el.tags.healthcare || 'Medical Facility',
+                        typeCategory: typeCategory,
                         address: address.length > 0 ? address.join(', ') : 'Nearby location',
                         lat: elLat,
                         lon: elLon
                     };
                 });
 
+                // Sort to prioritize blood banks first
+                locations.sort((a, b) => {
+                    const priority = { 'blood_bank': 0, 'blood_donation': 1, 'clinic': 2, 'hospital': 3 };
+                    return (priority[a.typeCategory] || 99) - (priority[b.typeCategory] || 99);
+                });
+
                 if (locations.length === 0) {
-                    app.showToast('No facilities found within 5km.');
+                    app.showToast('No facilities found within 20km.');
                 } else {
                     app.renderLocationSuggestions(locations);
                 }
@@ -391,9 +418,9 @@ window.app = {
 
                 if (locMsg) locMsg.textContent = '🔍 Searching nearby hospitals & blood banks…';
 
-                // Query Overpass for hospitals + blood banks within 5 km
+                // Query Overpass for hospitals + blood banks within 20 km
                 try {
-                    const radius = 5000;
+                    const radius = 20000;
                     const query = `
                         [out:json];
                         (
@@ -425,7 +452,7 @@ window.app = {
                         .filter(b => b.lat && b.lon);
 
                     if (elements.length === 0) {
-                        if (locMsg) locMsg.textContent = '⚠️ No hospitals found within 5 km. Please try to request from a different location.';
+                        if (locMsg) locMsg.textContent = '⚠️ No hospitals found within 20 km. Please try to request from a different location.';
                     } else {
                         if (locMsg) locMsg.textContent = `✅ Found ${elements.length} facilit${elements.length === 1 ? 'y' : 'ies'}. Click a red marker then "Select" to choose.`;
                     }
@@ -531,7 +558,7 @@ window.app = {
         const modal = document.getElementById('locationViewModal');
         if (!modal) return;
 
-        document.getElementById('locationViewTitle').textContent = title || 'Hospital Location';
+        document.getElementById('locationViewTitle').textContent = title || 'Location';
         modal.classList.remove('hidden');
         modal.style.display = 'flex';
 
@@ -672,7 +699,7 @@ window.app = {
             if (!response.ok) throw new Error(matches.error);
 
             if (matches.length === 0) {
-                container.innerHTML = '<p style="color: var(--text-muted);">No open targeted requests found for you.</p>';
+                container.innerHTML = '<p style="color: var(--text-muted);">No open requests matching your blood type right now. Check back later!</p>';
                 return;
             }
 
@@ -752,7 +779,7 @@ window.app = {
                 bloodBankSection = `
                     <div class="blood-bank-panel blood-bank-available">
                         <div class="bb-panel-header">
-                            <span>🏥</span>
+                            <span>🩸</span>
                             <strong>Blood is available at ${b.name}</strong>
                         </div>
                         <div class="bb-bank-row" style="display:flex; flex-direction:column; gap:0.3rem; margin-top:0.5rem;">
@@ -760,7 +787,6 @@ window.app = {
                                 <span class="bb-bank-name">${b.name}</span>
                                 <span style="color:#059669; font-weight:600;">Request Accepted ✅</span>
                             </div>
-                            <div style="font-size:0.85rem; color:var(--text-muted);">Contact: <strong>${b.contact}</strong></div>
                             <div style="font-size:0.85rem;">
                                 Requested Units: <strong>${b.requestedUnits}</strong> &nbsp;|
                                 Available Units: <strong style="color:#059669;">${b.availableUnits}</strong>
@@ -774,11 +800,10 @@ window.app = {
                 bloodBankSection = `
                     <div class="blood-bank-panel blood-bank-partial">
                         <div class="bb-panel-header">
-                            <span>🟡</span>
+                            <span>🩸</span>
                             <strong>Blood partially available at ${b.name}</strong>
                         </div>
                         <div class="bb-bank-row" style="display:flex; flex-direction:column; gap:0.3rem; margin-top:0.5rem;">
-                            <div style="font-size:0.85rem; color:var(--text-muted);">Contact: <strong>${b.contact}</strong></div>
                             <div style="font-size:0.85rem;">
                                 Requested Units: <strong>${b.requestedUnits}</strong> &nbsp;|
                                 Available Units: <strong style="color:#d97706;">${b.availableUnits}</strong>
@@ -795,7 +820,7 @@ window.app = {
                             <span>⚠️</span>
                             <strong>Blood is not available in nearby blood banks</strong>
                         </div>
-                        <div style="font-size:0.85rem; color:var(--text-muted); margin-top:0.4rem;">Checked: <strong>${b.name}</strong> (${b.distanceKm} km away)</div>
+                        <div style="font-size:0.85rem; color:var(--text-muted); margin-top:0.4rem;">Checked: <strong>🩸 ${b.name}</strong> (${b.distanceKm} km away)</div>
                         <p class="bb-note" style="margin-top:0.4rem;">${isSeeker ? 'Nearby eligible donors have been alerted via SMS.' : 'Your help is urgently needed!'}</p>
                     </div>
                 `;
@@ -834,7 +859,7 @@ window.app = {
             actionButtons = `<button type="button" class="btn btn-primary" onclick="app.completeBloodBankDonation('${req.id}')">Mark as Donation Completed</button>`;
         }
 
-        if (!isSeeker && (req.status === 'DonorNeeded' || req.status === 'Open')) {
+        if (!isSeeker && (req.status === 'DonorNeeded' || req.status === 'Open' || req.status === 'BloodBankPartial')) {
             actionButtons = `<button type="button" class="btn btn-primary" id="accept-btn-${req.id}" onclick="app.acceptRequest(event, '${req.id}')">🩸 Accept Request</button>`;
         }
 
@@ -881,7 +906,10 @@ window.app = {
             try { 
                 let bks = JSON.parse(req.bloodBankResult); 
                 const availableBank = bks.find(b => b.available && b.units > 0);
-                if (availableBank) contactDisplay = `<br><span style="color:#2563eb; font-size:0.8rem">📞 ${availableBank.contact}</span>`;
+                if (availableBank) {
+                    // Removed contact display as per user request
+                    // contactDisplay = `<br><span style="color:#2563eb; font-size:0.8rem">📍 ${availableBank.distanceKm} km away</span>`;
+                }
             } catch(e){}
         }
 
@@ -910,7 +938,7 @@ window.app = {
             <!-- Three columns -->
             <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem; margin-top: 1rem; border-top: 1px solid #f3f4f6; padding-top: 1rem;">
                 <div style="display: flex; flex-direction: column; gap: 0.2rem;">
-                    <span style="color: #6b7280; font-size: 0.70rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Hospital Location</span>
+                    <span style="color: #6b7280; font-size: 0.70rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Location</span>
                     <strong style="color: #1f2937; font-size: 0.85rem; line-height: 1.2;">
                         ${locationDisplay}
                         ${req.location && req.location.includes('|') ? `<br><button type="button" onclick="app.openLocationModal('${safeLocation}','${safeTitle}')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:0.75rem;padding:0;text-decoration:underline;white-space:nowrap;margin-top:2px;">📍 View Map</button>` : ''}
@@ -979,8 +1007,19 @@ window.app = {
             if (!response.ok) throw new Error(data.error);
 
             app.showToast('✅ Request Accepted! You can now communicate with the seeker.');
-            switchView('chats');
-            setTimeout(() => app.openChat(reqId), 100);
+            
+            // Update the buttons in the current card instead of switching views
+            const card = document.querySelector(`[data-request-id="${reqId}"]`);
+            if (card) {
+                const buttonsContainer = card.querySelector('div[style*="display: flex; gap: 0.75rem"]');
+                if (buttonsContainer) {
+                    buttonsContainer.innerHTML = `
+                        <button type="button" class="btn btn-outline" style="padding:0.5rem 1rem; border-color:#2563eb; color:#2563eb;" onclick="switchView('chats'); setTimeout(()=>app.openChat('${reqId}'),100)">💬 Chat with Seeker</button>
+                        <button type="button" class="btn btn-cancel" id="cancel-btn-${reqId}" onclick="app.cancelAcceptance('${reqId}')">↩ Cancel Acceptance</button>
+                    `;
+                }
+            }
+            
             app.updateDashboardStats();
         } catch (err) {
             if (btn) { btn.disabled = false; btn.innerText = '🩸 Accept Request'; }
